@@ -1,0 +1,2048 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>streaming: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/bmorphism/vibespace-mcp-go/streaming/access_control.go (95.8%)</option>
+				
+				<option value="file1">github.com/bmorphism/vibespace-mcp-go/streaming/moment_generator.go (96.8%)</option>
+				
+				<option value="file2">github.com/bmorphism/vibespace-mcp-go/streaming/nats_client.go (35.4%)</option>
+				
+				<option value="file3">github.com/bmorphism/vibespace-mcp-go/streaming/nats_mock.go (98.3%)</option>
+				
+				<option value="file4">github.com/bmorphism/vibespace-mcp-go/streaming/service.go (95.6%)</option>
+				
+				<option value="file5">github.com/bmorphism/vibespace-mcp-go/streaming/service_test_with_mock.go (0.0%)</option>
+				
+				<option value="file6">github.com/bmorphism/vibespace-mcp-go/streaming/test_helper.go (100.0%)</option>
+				
+				<option value="file7">github.com/bmorphism/vibespace-mcp-go/streaming/tools.go (55.4%)</option>
+				
+				<option value="file8">github.com/bmorphism/vibespace-mcp-go/streaming/tools_test_with_mock.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package streaming
+
+import (
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// CanAccessWorld determines if a user has permission to access a world moment
+func CanAccessWorld(userID string, moment *models.WorldMoment) bool <span class="cov8" title="1">{
+        // If the moment has no sharing settings defined (empty allowed users and not public), default to private
+        if !moment.Sharing.IsPublic &amp;&amp; len(moment.Sharing.AllowedUsers) == 0 </span><span class="cov8" title="1">{
+                // Only the creator can access
+                return userID == moment.CreatorID
+        }</span>
+        
+        // If the world is public, anyone can access
+        <span class="cov8" title="1">if moment.Sharing.IsPublic </span><span class="cov8" title="1">{
+                return true
+        }</span>
+        
+        // If the user is the creator, they always have access
+        <span class="cov8" title="1">if userID == moment.CreatorID </span><span class="cov0" title="0">{
+                return true
+        }</span>
+        
+        // Check if the user is in the allowed users list
+        <span class="cov8" title="1">for _, allowedUser := range moment.Sharing.AllowedUsers </span><span class="cov8" title="1">{
+                if userID == allowedUser </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        
+        // Default to no access
+        <span class="cov8" title="1">return false</span>
+}
+
+// GetAccessibleContent filters the content of a WorldMoment based on the user's
+// permissions and the context level specified in the sharing settings
+func GetAccessibleContent(userID string, moment *models.WorldMoment) *models.WorldMoment <span class="cov8" title="1">{
+        // If the user doesn't have access, return nil
+        if !CanAccessWorld(userID, moment) </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        
+        // If the user is the creator, they get full access
+        <span class="cov8" title="1">if userID == moment.CreatorID </span><span class="cov8" title="1">{
+                return moment
+        }</span>
+        
+        // Make a copy to avoid modifying the original
+        <span class="cov8" title="1">result := *moment
+        
+        // Apply context level filtering
+        switch moment.Sharing.ContextLevel </span>{
+        case models.ContextLevelNone:<span class="cov8" title="1">
+                // Provide minimal information - just ID, type and public metadata
+                result.CustomData = ""
+                result.SensorData = models.SensorData{}
+                if result.Vibe != nil </span><span class="cov8" title="1">{
+                        // Remove vibe details but keep basic info
+                        vibe := *result.Vibe
+                        vibe.SensorData = models.SensorData{}
+                        result.Vibe = &amp;vibe
+                }</span>
+                
+        case models.ContextLevelPartial:<span class="cov8" title="1">
+                // Provide moderate information but not custom/sensitive data
+                result.CustomData = ""</span>
+                // Keep sensor data and vibe information
+                
+        case models.ContextLevelFull:<span class="cov8" title="1"></span>
+                // Provide all information - no changes needed
+        }
+        
+        <span class="cov8" title="1">return &amp;result</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package streaming
+
+import (
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// MomentGenerator creates WorldMoment objects from repository data
+type MomentGenerator struct {
+        repo RepositoryInterface
+}
+
+// NewMomentGenerator creates a new moment generator with the given repository
+func NewMomentGenerator(repo RepositoryInterface) *MomentGenerator <span class="cov8" title="1">{
+        return &amp;MomentGenerator{
+                repo: repo,
+        }
+}</span>
+
+// GenerateMoment creates a WorldMoment for the specified world
+func (g *MomentGenerator) GenerateMoment(worldID string) (*models.WorldMoment, error) <span class="cov8" title="1">{
+        // Get the world from the repository
+        world, err := g.repo.GetWorld(worldID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        // Get the world's vibe
+        <span class="cov8" title="1">var vibePtr *models.Vibe
+        vibe, err := g.repo.GetWorldVibe(worldID)
+        if err == nil </span><span class="cov8" title="1">{
+                // Make a copy of the vibe
+                vibeCopy := vibe
+                vibePtr = &amp;vibeCopy
+        }</span>
+
+        // Create the moment - convert timestamp to milliseconds for consistent handling
+        <span class="cov8" title="1">now := time.Now().UTC()
+        timestamp := now.UnixNano() / int64(time.Millisecond)
+        
+        // Calculate activity from world properties
+        activity := float64(world.Occupancy) / 100.0
+        if activity &gt; 1.0 </span><span class="cov8" title="1">{
+                activity = 1.0
+        }</span>
+        
+        // Create sharing settings if not present on world
+        <span class="cov8" title="1">sharing := models.SharingSettings{
+                IsPublic: false,
+                AllowedUsers: []string{},
+                ContextLevel: models.ContextLevelPartial,
+        }
+        if len(world.Sharing.AllowedUsers) &gt; 0 || world.Sharing.IsPublic </span><span class="cov8" title="1">{
+                // If world has sharing settings, inherit them
+                sharing = models.SharingSettings{
+                        IsPublic: world.Sharing.IsPublic,
+                        AllowedUsers: append([]string{}, world.Sharing.AllowedUsers...),
+                        ContextLevel: world.Sharing.ContextLevel,
+                }
+        }</span>
+        
+        <span class="cov8" title="1">moment := &amp;models.WorldMoment{
+                WorldID:     worldID,
+                Timestamp:   timestamp,
+                VibeID:      world.CurrentVibe,
+                Vibe:        vibePtr,
+                Occupancy:   world.Occupancy,     // Use current world occupancy
+                Activity:    activity,            // Use calculated activity level
+                SensorData:  models.SensorData{}, // Initialize empty sensor data
+                CreatorID:   world.CreatorID,     // Inherit creator from world
+                Viewers:     []string{},          // Initialize empty viewers list
+                Sharing:     sharing,             // Use the sharing settings
+                CustomData:  "",                  // Initialize empty custom data
+        }
+
+        return moment, nil</span>
+}
+
+// GenerateAllMoments creates WorldMoment objects for all worlds in the repository
+func (g *MomentGenerator) GenerateAllMoments() ([]*models.WorldMoment, error) <span class="cov8" title="1">{
+        // Get all worlds
+        worlds := g.repo.GetAllWorlds()
+        
+        moments := make([]*models.WorldMoment, 0, len(worlds))
+        
+        // Generate a moment for each world
+        for _, world := range worlds </span><span class="cov8" title="1">{
+                moment, err := g.GenerateMoment(world.ID)
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span> // Skip worlds with errors
+                }
+                <span class="cov8" title="1">moments = append(moments, moment)</span>
+        }
+        
+        <span class="cov8" title="1">return moments, nil</span>
+}
+
+// calculateActivity determines the activity level of a world based on its properties
+func calculateActivity(world models.World) float64 <span class="cov8" title="1">{
+        // This is a placeholder implementation
+        // In a real system, this would consider recent changes, occupancy trends, sensor data, etc.
+        
+        // For now, just use occupancy as a simple activity metric
+        activity := float64(world.Occupancy) / 100.0
+        if activity &gt; 1.0 </span><span class="cov8" title="1">{
+                activity = 1.0
+        }</span>
+        
+        <span class="cov8" title="1">return activity</span>
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package streaming
+
+import (
+        "encoding/json"
+        "fmt"
+        "sync"
+        "time"
+
+        "github.com/nats-io/nats.go"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// RateLimiter implements a simple token bucket rate limiter
+type RateLimiter struct {
+        tokens      int
+        maxTokens   int
+        refillRate  int
+        lastRefill  time.Time
+        intervalMs  int
+        mu          sync.Mutex
+}
+
+// NewRateLimiter creates a new rate limiter
+func NewRateLimiter(maxTokens, refillRate, intervalMs int) *RateLimiter <span class="cov8" title="1">{
+        return &amp;RateLimiter{
+                tokens:     maxTokens,
+                maxTokens:  maxTokens,
+                refillRate: refillRate,
+                lastRefill: time.Now(),
+                intervalMs: intervalMs,
+        }
+}</span>
+
+// TryAcquire attempts to acquire a token and returns true if successful
+func (r *RateLimiter) TryAcquire() bool <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        
+        // Refill tokens if needed
+        now := time.Now()
+        elapsed := now.Sub(r.lastRefill)
+        if elapsed &gt;= time.Duration(r.intervalMs)*time.Millisecond </span><span class="cov8" title="1">{
+                // Calculate how many intervals have passed
+                intervals := int(elapsed.Milliseconds()) / r.intervalMs
+                // Add tokens based on refill rate and intervals
+                r.tokens += r.refillRate * intervals
+                if r.tokens &gt; r.maxTokens </span><span class="cov0" title="0">{
+                        r.tokens = r.maxTokens
+                }</span>
+                <span class="cov8" title="1">r.lastRefill = now</span>
+        }
+        
+        // Try to acquire a token
+        <span class="cov8" title="1">if r.tokens &gt; 0 </span><span class="cov8" title="1">{
+                r.tokens--
+                return true
+        }</span>
+        
+        <span class="cov8" title="1">return false</span>
+}
+
+// NATSClient handles connections to NATS server and publishing world moments
+type NATSClient struct {
+        conn            *nats.Conn
+        url             string
+        streamID        string       // Stream identifier (default: "ies")
+        connected       bool
+        reconnectCount  int
+        disconnectCount int
+        lastConnectTime time.Time
+        lastError       error
+        rateLimiter     *RateLimiter
+        mu              sync.Mutex
+}
+
+// NewNATSClient creates a new NATS client with the specified server URL
+func NewNATSClient(url string) *NATSClient <span class="cov8" title="1">{
+        // Create a rate limiter allowing 100 messages with 10 refills every 1000ms (1 second)
+        // This effectively allows a burst of 100 messages, then 10 messages per second
+        rateLimiter := NewRateLimiter(100, 10, 1000)
+        
+        return &amp;NATSClient{
+                url:             url,
+                streamID:        "ies",         // Default stream ID
+                connected:       false,
+                reconnectCount:  0,
+                disconnectCount: 0,
+                lastConnectTime: time.Time{}, // Zero time
+                rateLimiter:     rateLimiter,
+        }
+}</span>
+
+// NewNATSClientWithStreamID creates a new NATS client with custom stream ID
+func NewNATSClientWithStreamID(url string, streamID string) *NATSClient <span class="cov8" title="1">{
+        client := NewNATSClient(url)
+        client.streamID = streamID
+        return client
+}</span>
+
+// Connect establishes a connection to the NATS server
+func (c *NATSClient) Connect() error <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        if c.connected &amp;&amp; c.conn != nil &amp;&amp; c.conn.IsConnected() </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        // Clear any previous connection
+        <span class="cov8" title="1">if c.conn != nil </span><span class="cov0" title="0">{
+                c.conn.Close()
+                c.conn = nil
+        }</span>
+
+        // Track connection metrics
+        <span class="cov8" title="1">c.lastConnectTime = time.Now()
+
+        var err error
+        c.conn, err = nats.Connect(c.url,
+                nats.RetryOnFailedConnect(true),
+                nats.MaxReconnects(-1),            // Unlimited reconnect attempts
+                nats.ReconnectWait(2*time.Second), // Wait 2 seconds between reconnect attempts
+                nats.Timeout(5*time.Second),       // Connect timeout
+                nats.PingInterval(20*time.Second), // How often to ping the server to check connection
+                nats.MaxPingsOutstanding(5),       // Max number of pings in flight
+                
+                // Error handlers
+                nats.ErrorHandler(func(nc *nats.Conn, sub *nats.Subscription, err error) </span><span class="cov0" title="0">{
+                        c.mu.Lock()
+                        c.lastError = err
+                        c.mu.Unlock()
+                        fmt.Printf("NATS error: %v\n", err)
+                }</span>),
+                
+                // Disconnect handler
+                nats.DisconnectErrHandler(func(nc *nats.Conn, err error) <span class="cov0" title="0">{
+                        c.mu.Lock()
+                        c.connected = false
+                        c.disconnectCount++
+                        c.lastError = err
+                        c.mu.Unlock()
+                        fmt.Printf("NATS disconnected: %v\n", err)
+                }</span>),
+                
+                // Reconnect handler
+                nats.ReconnectHandler(func(nc *nats.Conn) <span class="cov0" title="0">{
+                        c.mu.Lock()
+                        c.connected = true
+                        c.reconnectCount++
+                        c.mu.Unlock()
+                        fmt.Printf("NATS reconnected to %s (reconnect count: %d)\n", 
+                                nc.ConnectedUrl(), c.reconnectCount)
+                }</span>),
+                
+                // Closed handler
+                nats.ClosedHandler(func(nc *nats.Conn) <span class="cov0" title="0">{
+                        c.mu.Lock()
+                        c.connected = false
+                        c.mu.Unlock()
+                        fmt.Printf("NATS connection closed\n")
+                }</span>),
+        )
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                c.lastError = err
+                return fmt.Errorf("failed to connect to NATS: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">c.connected = true
+        
+        // Log successful connection
+        fmt.Printf("Successfully connected to NATS server at %s\n", c.url)
+        
+        return nil</span>
+}
+
+// Close disconnects from the NATS server
+func (c *NATSClient) Close() <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        if c.conn != nil </span><span class="cov0" title="0">{
+                c.conn.Close()
+                c.connected = false
+        }</span>
+}
+
+// PublishWorldMoment publishes a world moment to NATS
+func (c *NATSClient) PublishWorldMoment(moment *models.WorldMoment, userID string) error <span class="cov8" title="1">{
+        // Check connection first without holding the main lock
+        if !c.IsConnected() </span><span class="cov8" title="1">{
+                return fmt.Errorf("not connected to NATS server")
+        }</span>
+        
+        // Apply rate limiting
+        <span class="cov0" title="0">if !c.rateLimiter.TryAcquire() </span><span class="cov0" title="0">{
+                return fmt.Errorf("rate limit exceeded, too many messages being published")
+        }</span>
+
+        <span class="cov0" title="0">c.mu.Lock()
+        defer c.mu.Unlock()
+
+        // Double-check connection after acquiring lock
+        if !c.connected || c.conn == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("not connected to NATS server")
+        }</span>
+
+        // If creator is not set, use the provided userID
+        <span class="cov0" title="0">if moment.CreatorID == "" </span><span class="cov0" title="0">{
+                moment.CreatorID = userID
+        }</span>
+
+        // Create subjects for different access patterns (including stream ID)
+        // 1. World-specific subject
+        <span class="cov0" title="0">worldSubject := fmt.Sprintf("%s.world.moment.%s", c.streamID, moment.WorldID)
+        
+        // 2. Creator-specific subject for their worlds
+        creatorSubject := fmt.Sprintf("%s.world.moment.%s.user.%s", c.streamID, moment.WorldID, moment.CreatorID)
+        
+        // Serialize the moment to JSON
+        data, err := json.Marshal(moment)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to marshal world moment: %w", err)
+        }</span>
+
+        // Publish to world subject if public
+        <span class="cov0" title="0">if moment.Sharing.IsPublic </span><span class="cov0" title="0">{
+                if err := c.conn.Publish(worldSubject, data); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to publish to world subject: %w", err)
+                }</span>
+        }
+        
+        // Always publish to creator's subject
+        <span class="cov0" title="0">if err := c.conn.Publish(creatorSubject, data); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to publish to creator subject: %w", err)
+        }</span>
+        
+        // Count of successful publications
+        <span class="cov0" title="0">publishCount := 1 // Creator subject always published
+        if moment.Sharing.IsPublic </span><span class="cov0" title="0">{
+                publishCount++ // Public subject if applicable
+        }</span>
+        
+        // Publish to each allowed user's subject with filtered content
+        <span class="cov0" title="0">for _, allowedUserID := range moment.Sharing.AllowedUsers </span><span class="cov0" title="0">{
+                // Skip if it's the creator (already published)
+                if allowedUserID == moment.CreatorID </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                
+                // Get filtered content for this user
+                <span class="cov0" title="0">filteredMoment := GetAccessibleContent(allowedUserID, moment)
+                if filteredMoment == nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                
+                // Create user-specific subject
+                <span class="cov0" title="0">userSubject := fmt.Sprintf("%s.world.moment.%s.user.%s", c.streamID, moment.WorldID, allowedUserID)
+                
+                // Serialize the filtered moment
+                filteredData, err := json.Marshal(filteredMoment)
+                if err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("Warning: Failed to marshal filtered moment for user %s: %v\n", allowedUserID, err)
+                        continue</span>
+                }
+                
+                // Publish to user-specific subject
+                <span class="cov0" title="0">if err := c.conn.Publish(userSubject, filteredData); err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("Warning: Failed to publish to user subject %s: %v\n", userSubject, err)
+                }</span> else<span class="cov0" title="0"> {
+                        publishCount++
+                }</span>
+        }
+
+        // Log successful publishing
+        <span class="cov0" title="0">fmt.Printf("Published world moment for %s to %d subjects\n", moment.WorldID, publishCount)
+        
+        return nil</span>
+}
+
+// PublishVibeUpdate publishes a vibe update to NATS
+func (c *NATSClient) PublishVibeUpdate(worldID string, vibe *models.Vibe) error <span class="cov8" title="1">{
+        // Check connection first without holding the main lock
+        if !c.IsConnected() </span><span class="cov8" title="1">{
+                return fmt.Errorf("not connected to NATS server")
+        }</span>
+        
+        // Apply rate limiting
+        <span class="cov0" title="0">if !c.rateLimiter.TryAcquire() </span><span class="cov0" title="0">{
+                return fmt.Errorf("rate limit exceeded, too many messages being published")
+        }</span>
+
+        <span class="cov0" title="0">c.mu.Lock()
+        defer c.mu.Unlock()
+
+        // Double-check connection after acquiring lock
+        if !c.connected || c.conn == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("not connected to NATS server")
+        }</span>
+
+        // Create the subject for vibe updates with stream ID
+        <span class="cov0" title="0">subject := fmt.Sprintf("%s.world.vibe.%s", c.streamID, worldID)
+
+        // Serialize the vibe to JSON
+        data, err := json.Marshal(vibe)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to marshal vibe: %w", err)
+        }</span>
+
+        // Publish the data
+        <span class="cov0" title="0">err = c.conn.Publish(subject, data)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to publish vibe update: %w", err)
+        }</span>
+        
+        // Log successful publishing
+        <span class="cov0" title="0">fmt.Printf("Published vibe update for world %s\n", worldID)
+        
+        return nil</span>
+}
+
+// IsConnected returns the current connection status
+func (c *NATSClient) IsConnected() bool <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        return c.connected &amp;&amp; c.conn != nil &amp;&amp; c.conn.IsConnected()
+}</span>
+
+// ConnectionStatus returns detailed status information about the NATS connection
+type ConnectionStatus struct {
+        IsConnected      bool      `json:"isConnected"`
+        URL              string    `json:"url"`
+        ReconnectCount   int       `json:"reconnectCount"`
+        DisconnectCount  int       `json:"disconnectCount"`
+        LastConnectTime  time.Time `json:"lastConnectTime"`
+        LastErrorMessage string    `json:"lastErrorMessage,omitempty"`
+        ServerID         string    `json:"serverId,omitempty"`
+        ConnectedURL     string    `json:"connectedUrl,omitempty"`
+        RTT              string    `json:"rtt,omitempty"` // Round-trip time
+}
+
+// GetConnectionStatus returns detailed status information about the NATS connection
+func (c *NATSClient) GetConnectionStatus() ConnectionStatus <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        
+        status := ConnectionStatus{
+                IsConnected:     c.connected,
+                URL:             c.url,
+                ReconnectCount:  c.reconnectCount,
+                DisconnectCount: c.disconnectCount,
+                LastConnectTime: c.lastConnectTime,
+        }
+        
+        if c.lastError != nil </span><span class="cov0" title="0">{
+                status.LastErrorMessage = c.lastError.Error()
+        }</span>
+        
+        // Add server-specific information if connected
+        <span class="cov8" title="1">if c.connected &amp;&amp; c.conn != nil </span><span class="cov0" title="0">{
+                status.ServerID = c.conn.ConnectedServerId()
+                status.ConnectedURL = c.conn.ConnectedUrl()
+                
+                // Get RTT (round-trip time) if available
+                if rtt, err := c.conn.RTT(); err == nil </span><span class="cov0" title="0">{
+                        status.RTT = rtt.String()
+                }</span>
+        }
+        
+        <span class="cov8" title="1">return status</span>
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package streaming
+
+import (
+        "errors"
+        "sync"
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// MockNATSClient implements a mock version of NATSClientInterface for testing
+type MockNATSClient struct {
+        url               string
+        streamID          string
+        connected         bool
+        reconnectCount    int
+        disconnectCount   int
+        lastConnectTime   time.Time
+        lastError         error
+        publishedMoments  []*models.WorldMoment
+        publishedVibes    map[string]*models.Vibe
+        connectError      error
+        publishMomentError error
+        publishVibeError   error
+        mu                sync.Mutex
+}
+
+// NewMockNATSClient creates a new mock NATS client for testing
+func NewMockNATSClient() *MockNATSClient <span class="cov8" title="1">{
+        return &amp;MockNATSClient{
+                url:              "nats://mock.server:4222",
+                streamID:         "test-stream",
+                connected:        false,
+                publishedMoments: []*models.WorldMoment{},
+                publishedVibes:   make(map[string]*models.Vibe),
+        }
+}</span>
+
+// SetConnectError sets an error to be returned by Connect
+func (m *MockNATSClient) SetConnectError(err error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.connectError = err
+}</span>
+
+// SetPublishMomentError sets an error to be returned by PublishWorldMoment
+func (m *MockNATSClient) SetPublishMomentError(err error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.publishMomentError = err
+}</span>
+
+// SetPublishVibeError sets an error to be returned by PublishVibeUpdate
+func (m *MockNATSClient) SetPublishVibeError(err error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.publishVibeError = err
+}</span>
+
+// Connect implements the NATSClientInterface.Connect method
+func (m *MockNATSClient) Connect() error <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        
+        if m.connectError != nil </span><span class="cov8" title="1">{
+                return m.connectError
+        }</span>
+        
+        <span class="cov8" title="1">m.connected = true
+        m.lastConnectTime = time.Now()
+        return nil</span>
+}
+
+// Close implements the NATSClientInterface.Close method
+func (m *MockNATSClient) Close() <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.connected = false
+}</span>
+
+// PublishWorldMoment implements the NATSClientInterface.PublishWorldMoment method
+func (m *MockNATSClient) PublishWorldMoment(moment *models.WorldMoment, userID string) error <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        
+        if m.publishMomentError != nil </span><span class="cov8" title="1">{
+                return m.publishMomentError
+        }</span>
+        
+        <span class="cov8" title="1">if !m.connected </span><span class="cov8" title="1">{
+                return errors.New("not connected to NATS server")
+        }</span>
+        
+        <span class="cov8" title="1">m.publishedMoments = append(m.publishedMoments, moment)
+        return nil</span>
+}
+
+// PublishVibeUpdate implements the NATSClientInterface.PublishVibeUpdate method
+func (m *MockNATSClient) PublishVibeUpdate(worldID string, vibe *models.Vibe) error <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        
+        if m.publishVibeError != nil </span><span class="cov8" title="1">{
+                return m.publishVibeError
+        }</span>
+        
+        <span class="cov8" title="1">if !m.connected </span><span class="cov8" title="1">{
+                return errors.New("not connected to NATS server")
+        }</span>
+        
+        <span class="cov8" title="1">m.publishedVibes[worldID] = vibe
+        return nil</span>
+}
+
+// IsConnected implements the NATSClientInterface.IsConnected method
+func (m *MockNATSClient) IsConnected() bool <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        return m.connected
+}</span>
+
+// GetConnectionStatus implements the NATSClientInterface.GetConnectionStatus method
+func (m *MockNATSClient) GetConnectionStatus() ConnectionStatus <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        
+        var lastErrorMsg string
+        if m.lastError != nil </span><span class="cov0" title="0">{
+                lastErrorMsg = m.lastError.Error()
+        }</span>
+        
+        <span class="cov8" title="1">return ConnectionStatus{
+                IsConnected:      m.connected,
+                URL:              m.url,
+                ReconnectCount:   m.reconnectCount,
+                DisconnectCount:  m.disconnectCount,
+                LastConnectTime:  m.lastConnectTime,
+                LastErrorMessage: lastErrorMsg,
+        }</span>
+}
+
+// GetPublishedMoments returns all published moments for testing verification
+func (m *MockNATSClient) GetPublishedMoments() []*models.WorldMoment <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        return m.publishedMoments
+}</span>
+
+// GetPublishedVibes returns all published vibes for testing verification
+func (m *MockNATSClient) GetPublishedVibes() map[string]*models.Vibe <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        return m.publishedVibes
+}</span>
+
+// SimulateDisconnect simulates a disconnection from the NATS server
+func (m *MockNATSClient) SimulateDisconnect() <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.connected = false
+        m.disconnectCount++
+}</span>
+
+// SimulateReconnect simulates a reconnection to the NATS server
+func (m *MockNATSClient) SimulateReconnect() <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.connected = true
+        m.reconnectCount++
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package streaming
+
+import (
+        "fmt"
+        "sync"
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// StreamingConfig holds configuration for the streaming service
+type StreamingConfig struct {
+        NATSHost       string        // NATS host (e.g., "nonlocal.info")
+        NATSPort       int           // NATS port (default: 4222)
+        NATSUrl        string        // Complete NATS URL (overrides NATSHost/NATSPort if set)
+        StreamID       string        // Stream identifier (default: "ies")
+        StreamInterval time.Duration // Interval between streaming moments
+        AutoStart      bool          // Whether to start streaming automatically
+}
+
+// StreamingService manages NATS streaming for world moments
+type StreamingService struct {
+        natsClient      NATSClientInterface
+        momentGenerator MomentGeneratorInterface
+        config          *StreamingConfig
+        repo            RepositoryInterface
+        streamingActive bool
+        stopChan        chan struct{}
+        mu              sync.Mutex
+}
+
+// NewStreamingService creates a new streaming service
+func NewStreamingService(repo RepositoryInterface, config *StreamingConfig) *StreamingService <span class="cov8" title="1">{
+        // Set default values if not provided
+        if config.NATSPort == 0 </span><span class="cov8" title="1">{
+                config.NATSPort = 4222 // Default NATS port
+        }</span>
+        
+        <span class="cov8" title="1">if config.StreamID == "" </span><span class="cov8" title="1">{
+                config.StreamID = "ies" // Default stream ID
+        }</span>
+        
+        // If NATSUrl is not provided, construct it from host and port
+        <span class="cov8" title="1">if config.NATSUrl == "" &amp;&amp; config.NATSHost != "" </span><span class="cov8" title="1">{
+                config.NATSUrl = fmt.Sprintf("nats://%s:%d", config.NATSHost, config.NATSPort)
+        }</span> else<span class="cov8" title="1"> if config.NATSUrl == "" </span><span class="cov8" title="1">{
+                // Default to nonlocal.info if nothing is provided
+                config.NATSUrl = fmt.Sprintf("nats://nonlocal.info:%d", config.NATSPort)
+        }</span>
+        
+        // Create NATS client with the configured stream ID
+        <span class="cov8" title="1">natsClient := NewNATSClientWithStreamID(config.NATSUrl, config.StreamID)
+        
+        return CreateStreamingService(repo, config, natsClient)</span>
+}
+
+// CreateStreamingService creates a new streaming service with a custom NATS client
+// This allows dependency injection for testing
+func CreateStreamingService(repo RepositoryInterface, config *StreamingConfig, natsClient NATSClientInterface) *StreamingService <span class="cov8" title="1">{
+        return &amp;StreamingService{
+                natsClient:      natsClient,
+                momentGenerator: NewMomentGenerator(repo),
+                config:          config,
+                repo:            repo,
+                streamingActive: false,
+                stopChan:        make(chan struct{}),
+        }
+}</span>
+
+// Start initializes the streaming service and begins streaming if autoStart is true
+func (s *StreamingService) Start() error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        // Connect to NATS
+        if err := s.natsClient.Connect(); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to connect to NATS: %w", err)
+        }</span>
+
+        // Start streaming if autoStart is enabled
+        <span class="cov8" title="1">if s.config.AutoStart </span><span class="cov8" title="1">{
+                return s.startStreaming()
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Stop terminates the streaming service
+func (s *StreamingService) Stop() <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        // Stop streaming if active
+        if s.streamingActive </span><span class="cov8" title="1">{
+                s.stopStreaming()
+        }</span>
+
+        // Close NATS connection
+        <span class="cov8" title="1">s.natsClient.Close()</span>
+}
+
+// StartStreaming begins the streaming of world moments
+func (s *StreamingService) StartStreaming() error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        return s.startStreaming()
+}</span>
+
+// startStreaming is the internal method to start streaming (not thread-safe)
+func (s *StreamingService) startStreaming() error <span class="cov8" title="1">{
+        if s.streamingActive </span><span class="cov8" title="1">{
+                return nil // Already streaming
+        }</span>
+
+        // Make sure we're connected to NATS
+        <span class="cov8" title="1">if !s.natsClient.IsConnected() </span><span class="cov8" title="1">{
+                if err := s.natsClient.Connect(); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to connect to NATS: %w", err)
+                }</span>
+        }
+
+        // Reset the stop channel
+        <span class="cov8" title="1">s.stopChan = make(chan struct{})
+        s.streamingActive = true
+
+        // Start the streaming goroutine
+        go s.streamMoments()
+
+        return nil</span>
+}
+
+// StopStreaming stops the streaming of world moments
+func (s *StreamingService) StopStreaming() <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        s.stopStreaming()
+}</span>
+
+// stopStreaming is the internal method to stop streaming (not thread-safe)
+func (s *StreamingService) stopStreaming() <span class="cov8" title="1">{
+        if !s.streamingActive </span><span class="cov8" title="1">{
+                return // Not streaming
+        }</span>
+
+        // Signal the streaming goroutine to stop
+        <span class="cov8" title="1">close(s.stopChan)
+        s.streamingActive = false</span>
+}
+
+// streamMoments is the main streaming loop that publishes world moments at regular intervals
+func (s *StreamingService) streamMoments() <span class="cov8" title="1">{
+        ticker := time.NewTicker(s.config.StreamInterval)
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        // Generate and publish moments for all worlds
+                        moments, err := s.momentGenerator.GenerateAllMoments()
+                        if err != nil </span><span class="cov8" title="1">{
+                                fmt.Printf("Error generating moments: %v\n", err)
+                                continue</span>
+                        }
+
+                        // Publish each moment
+                        <span class="cov8" title="1">for _, moment := range moments </span><span class="cov8" title="1">{
+                                // For automatic streaming, we use the "system" as the creator ID
+                                // if it's not already set
+                                creatorID := moment.CreatorID
+                                if creatorID == "" </span><span class="cov8" title="1">{
+                                        creatorID = "system"
+                                }</span>
+                                
+                                // Set default sharing settings for automated moments if needed
+                                <span class="cov8" title="1">if !moment.Sharing.IsPublic &amp;&amp; len(moment.Sharing.AllowedUsers) == 0 &amp;&amp; moment.Sharing.ContextLevel == "" </span><span class="cov8" title="1">{
+                                        // By default, system-generated moments are public with partial context
+                                        moment.Sharing = models.SharingSettings{
+                                                IsPublic:     true,
+                                                AllowedUsers: []string{},
+                                                ContextLevel: models.ContextLevelPartial,
+                                        }
+                                }</span>
+                                
+                                <span class="cov8" title="1">if err := s.natsClient.PublishWorldMoment(moment, creatorID); err != nil </span><span class="cov8" title="1">{
+                                        fmt.Printf("Error publishing moment for world %s: %v\n", moment.WorldID, err)
+                                }</span>
+                        }
+
+                case &lt;-s.stopChan:<span class="cov8" title="1">
+                        // Streaming has been stopped
+                        return</span>
+                }
+        }
+}
+
+// StreamSingleWorld generates and streams a moment for a single world
+func (s *StreamingService) StreamSingleWorld(worldID string, userID string) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        // Make sure we're connected to NATS
+        if !s.natsClient.IsConnected() </span><span class="cov8" title="1">{
+                if err := s.natsClient.Connect(); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to connect to NATS: %w", err)
+                }</span>
+        }
+
+        // Generate a moment for the world
+        <span class="cov8" title="1">moment, err := s.momentGenerator.GenerateMoment(worldID)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to generate moment: %w", err)
+        }</span>
+        
+        // Set creator ID if not already set
+        <span class="cov8" title="1">if moment.CreatorID == "" </span><span class="cov8" title="1">{
+                moment.CreatorID = userID
+        }</span>
+        
+        // If world already has viewers, add this user if not already there
+        <span class="cov8" title="1">userExists := false
+        for _, viewer := range moment.Viewers </span><span class="cov0" title="0">{
+                if viewer == userID </span><span class="cov0" title="0">{
+                        userExists = true
+                        break</span>
+                }
+        }
+        
+        <span class="cov8" title="1">if !userExists </span><span class="cov8" title="1">{
+                moment.Viewers = append(moment.Viewers, userID)
+        }</span>
+        
+        // Set default sharing settings if needed (completely empty or only default values)
+        <span class="cov8" title="1">if !moment.Sharing.IsPublic &amp;&amp; len(moment.Sharing.AllowedUsers) == 0 &amp;&amp; moment.Sharing.ContextLevel == "" </span><span class="cov8" title="1">{
+                moment.Sharing = models.SharingSettings{
+                        IsPublic:     false,
+                        AllowedUsers: []string{},
+                        ContextLevel: models.ContextLevelPartial,
+                }
+        }</span>
+
+        // Publish the moment with user information
+        <span class="cov8" title="1">if err := s.natsClient.PublishWorldMoment(moment, userID); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to publish moment: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// IsStreaming returns whether the service is currently streaming
+func (s *StreamingService) IsStreaming() bool <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        return s.streamingActive
+}</span>
+
+// PublishVibeUpdate publishes a vibe update for a specific world
+func (s *StreamingService) PublishVibeUpdate(worldID string, vibe *models.Vibe) error <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        // Make sure we're connected to NATS
+        if !s.natsClient.IsConnected() </span><span class="cov8" title="1">{
+                if err := s.natsClient.Connect(); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to connect to NATS: %w", err)
+                }</span>
+        }
+
+        // Publish the vibe update
+        <span class="cov8" title="1">return s.natsClient.PublishVibeUpdate(worldID, vibe)</span>
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package streaming
+
+import (
+        "errors"
+        "testing"
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+        "github.com/bmorphism/vibespace-mcp-go/repository"
+        "github.com/stretchr/testify/assert"
+)
+
+func TestStreamingServiceWithMock(t *testing.T) <span class="cov0" title="0">{
+        // Create test repository
+        repo := repository.NewRepository()
+        
+        // Add a test world
+        world := models.World{
+                ID:          "test-world",
+                Name:        "Test World",
+                Description: "A world for testing",
+                Type:        models.WorldTypeVirtual,
+                CreatorID:   "user123",
+                Sharing: models.SharingSettings{
+                        IsPublic:     true,
+                        ContextLevel: models.ContextLevelFull,
+                },
+        }
+        err := repo.AddWorld(world)
+        assert.NoError(t, err)
+        
+        // Add a test vibe
+        vibe := models.Vibe{
+                ID:     "test-vibe",
+                Name:   "Test Vibe",
+                Energy: 0.8,
+                Mood:   models.MoodCalm,
+        }
+        err = repo.AddVibe(vibe)
+        assert.NoError(t, err)
+        
+        // Associate vibe with world
+        err = repo.SetWorldVibe("test-world", "test-vibe")
+        assert.NoError(t, err)
+        
+        // Create config
+        config := &amp;StreamingConfig{
+                NATSUrl:        "nats://test:4222",
+                StreamInterval: 100 * time.Millisecond,
+                StreamID:       "test-stream",
+                AutoStart:      false,
+        }
+        
+        t.Run("Start connects to NATS", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call Start
+                err := service.Start()
+                assert.NoError(t, err)
+                
+                // Verify Connect was called
+                assert.True(t, mockNats.IsConnected())
+                
+                // AutoStart is false, so streaming should not be active
+                assert.False(t, service.IsStreaming())
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("Start with AutoStart", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                
+                // Create config with AutoStart true
+                autoStartConfig := &amp;StreamingConfig{
+                        NATSUrl:        "nats://test:4222",
+                        StreamInterval: 100 * time.Millisecond,
+                        StreamID:       "test-stream",
+                        AutoStart:      true,
+                }
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, autoStartConfig, mockNats)
+                
+                // Call Start
+                err := service.Start()
+                assert.NoError(t, err)
+                
+                // Verify Connect was called
+                assert.True(t, mockNats.IsConnected())
+                
+                // AutoStart is true, so streaming should be active
+                assert.True(t, service.IsStreaming())
+                
+                // Cleanup
+                service.Stop()
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("Start with connect error", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client with error
+                mockNats := NewMockNATSClient()
+                mockNats.SetConnectError(errors.New("connect error"))
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call Start
+                err := service.Start()
+                assert.Error(t, err)
+                assert.Contains(t, err.Error(), "connect error")
+                
+                // Streaming should not be active
+                assert.False(t, service.IsStreaming())
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("Stop ends streaming", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Set streaming active
+                service.streamingActive = true
+                service.stopChan = make(chan struct{})
+                
+                // Call Stop
+                service.Stop()
+                
+                // Verify streaming is stopped
+                assert.False(t, service.IsStreaming())
+                
+                // Verify NATS connection is closed
+                assert.False(t, mockNats.IsConnected())
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StartStreaming connects and starts streaming", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call StartStreaming
+                err := service.StartStreaming()
+                assert.NoError(t, err)
+                
+                // Verify streaming is active
+                assert.True(t, service.IsStreaming())
+                
+                // Verify connected to NATS
+                assert.True(t, mockNats.IsConnected())
+                
+                // Calling again should be a no-op
+                err = service.StartStreaming()
+                assert.NoError(t, err)
+                
+                // Cleanup
+                service.Stop()
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StartStreaming with connect error", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client with error
+                mockNats := NewMockNATSClient()
+                mockNats.SetConnectError(errors.New("connect error"))
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call StartStreaming
+                err := service.StartStreaming()
+                assert.Error(t, err)
+                
+                // Streaming should not be active
+                assert.False(t, service.IsStreaming())
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StopStreaming stops streaming", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Set streaming active
+                service.streamingActive = true
+                service.stopChan = make(chan struct{})
+                
+                // Call StopStreaming
+                service.StopStreaming()
+                
+                // Verify streaming is stopped
+                assert.False(t, service.IsStreaming())
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StreamSingleWorld publishes a moment", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                mockNats.Connect()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call StreamSingleWorld
+                err := service.StreamSingleWorld("test-world", "user123")
+                assert.NoError(t, err)
+                
+                // Verify moment was published
+                moments := mockNats.GetPublishedMoments()
+                assert.Equal(t, 1, len(moments))
+                assert.Equal(t, "test-world", moments[0].WorldID)
+                assert.Equal(t, "test-vibe", moments[0].VibeID)
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StreamSingleWorld with non-existent world", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                mockNats.Connect()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call StreamSingleWorld with non-existent world
+                err := service.StreamSingleWorld("non-existent", "user123")
+                assert.Error(t, err)
+                
+                // Verify no moments were published
+                moments := mockNats.GetPublishedMoments()
+                assert.Equal(t, 0, len(moments))
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("StreamSingleWorld with publish error", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client with error
+                mockNats := NewMockNATSClient()
+                mockNats.Connect()
+                mockNats.SetPublishMomentError(errors.New("publish error"))
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Call StreamSingleWorld
+                err := service.StreamSingleWorld("test-world", "user123")
+                assert.Error(t, err)
+                assert.Contains(t, err.Error(), "publish error")
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("PublishVibeUpdate publishes a vibe update", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client
+                mockNats := NewMockNATSClient()
+                mockNats.Connect()
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Get the vibe
+                worldVibe, err := repo.GetWorldVibe("test-world")
+                assert.NoError(t, err)
+                
+                // Call PublishVibeUpdate
+                err = service.PublishVibeUpdate("test-world", &amp;worldVibe)
+                assert.NoError(t, err)
+                
+                // Verify vibe was published
+                vibes := mockNats.GetPublishedVibes()
+                assert.Equal(t, 1, len(vibes))
+                assert.Equal(t, "test-vibe", vibes["test-world"].ID)
+        }</span>)
+        
+        <span class="cov0" title="0">t.Run("PublishVibeUpdate with publish error", func(t *testing.T) </span><span class="cov0" title="0">{
+                // Create mock NATS client with error
+                mockNats := NewMockNATSClient()
+                mockNats.Connect()
+                mockNats.SetPublishVibeError(errors.New("publish error"))
+                
+                // Create service with mock
+                service := CreateStreamingService(repo, config, mockNats)
+                
+                // Get the vibe
+                worldVibe, err := repo.GetWorldVibe("test-world")
+                assert.NoError(t, err)
+                
+                // Call PublishVibeUpdate
+                err = service.PublishVibeUpdate("test-world", &amp;worldVibe)
+                assert.Error(t, err)
+                assert.Contains(t, err.Error(), "publish error")
+        }</span>)
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">package streaming
+
+import ()
+
+// This file contains helper functions for testing
+
+// SetRateLimiter sets the rate limiter for testing
+func (c *NATSClient) SetRateLimiter(limiter *RateLimiter) <span class="cov8" title="1">{
+        c.rateLimiter = limiter
+}</span>
+
+// SetConnectedState sets the connected flag for testing
+func (c *NATSClient) SetConnectedState(connected bool) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.connected = connected
+}</span>
+
+// SetConfig allows setting the config directly for testing
+func (s *StreamingService) SetConfig(config *StreamingConfig) <span class="cov8" title="1">{
+        s.config = config
+}</span>
+
+// SetClient sets the NATS client for testing
+func (s *StreamingService) SetClient(client NATSClientInterface) <span class="cov8" title="1">{
+        s.natsClient = client
+}</span>
+
+// GetNATSClient returns the NATS client for testing
+func (s *StreamingService) GetNATSClient() NATSClientInterface <span class="cov8" title="1">{
+        return s.natsClient
+}</span>
+
+// GetConfig returns the config for testing
+func (s *StreamingService) GetConfig() *StreamingConfig <span class="cov8" title="1">{
+        return s.config
+}</span>
+
+// SetStreamingActive sets the streaming active flag for testing
+func (s *StreamingService) SetStreamingActive(active bool) <span class="cov8" title="1">{
+        s.streamingActive = active
+}</span>
+
+// SetMomentGenerator sets the moment generator for testing
+func (s *StreamingService) SetMomentGenerator(generator MomentGeneratorInterface) <span class="cov8" title="1">{
+        s.momentGenerator = generator
+}</span>
+
+// SetRepository sets the repository for testing
+func (s *StreamingService) SetRepository(repo RepositoryInterface) <span class="cov8" title="1">{
+        s.repo = repo
+}</pre>
+		
+		<pre class="file" id="file7" style="display: none">package streaming
+
+import (
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+)
+
+// StreamingTools provides MCP tools for controlling streaming
+type StreamingTools struct {
+        service *StreamingService
+}
+
+// NewStreamingTools creates a new streaming tools provider
+func NewStreamingTools(service *StreamingService) *StreamingTools <span class="cov8" title="1">{
+        return &amp;StreamingTools{
+                service: service,
+        }
+}</span>
+
+// StartStreamingRequest is the request for starting streaming
+type StartStreamingRequest struct {
+        Interval int `json:"interval"` // Stream interval in milliseconds
+}
+
+// StartStreamingResponse is the response for the start streaming request
+type StartStreamingResponse struct {
+        Success bool   `json:"success"`
+        Message string `json:"message"`
+}
+
+// StartStreaming starts the streaming service
+func (t *StreamingTools) StartStreaming(req *StartStreamingRequest) (*StartStreamingResponse, error) <span class="cov8" title="1">{
+        // If interval is provided, update the stream interval
+        if req.Interval &gt; 0 </span><span class="cov8" title="1">{
+                t.service.config.StreamInterval = time.Duration(req.Interval) * time.Millisecond
+        }</span>
+
+        // Start streaming
+        <span class="cov8" title="1">err := t.service.StartStreaming()
+        if err != nil </span><span class="cov0" title="0">{
+                return &amp;StartStreamingResponse{
+                        Success: false,
+                        Message: fmt.Sprintf("Failed to start streaming: %v", err),
+                }, nil
+        }</span>
+
+        <span class="cov8" title="1">return &amp;StartStreamingResponse{
+                Success: true,
+                Message: fmt.Sprintf("Streaming started with interval %v", t.service.config.StreamInterval),
+        }, nil</span>
+}
+
+// StopStreamingResponse is the response for the stop streaming request
+type StopStreamingResponse struct {
+        Success bool   `json:"success"`
+        Message string `json:"message"`
+}
+
+// StopStreaming stops the streaming service
+func (t *StreamingTools) StopStreaming() (*StopStreamingResponse, error) <span class="cov8" title="1">{
+        t.service.StopStreaming()
+
+        return &amp;StopStreamingResponse{
+                Success: true,
+                Message: "Streaming stopped",
+        }, nil
+}</span>
+
+// StatusResponse is the response for the status request
+type StatusResponse struct {
+        IsStreaming      bool              `json:"isStreaming"`
+        StreamInterval   string            `json:"streamInterval"`
+        NATSUrl          string            `json:"natsUrl"`
+        Message          string            `json:"message"`
+        UIIndicators     struct {
+                StreamActive      bool   `json:"streamActive"`
+                StreamIndicator   string `json:"streamIndicator"`
+                StatusColor       string `json:"statusColor"`
+                ConnectionQuality string `json:"connectionQuality"`
+        } `json:"uiIndicators"`
+        ConnectionStatus ConnectionStatus `json:"connectionStatus"`
+}
+
+// Status returns the current status of the streaming service
+func (t *StreamingTools) Status() (*StatusResponse, error) <span class="cov8" title="1">{
+        isStreaming := t.service.IsStreaming()
+        interval := t.service.config.StreamInterval
+        natsURL := t.service.config.NATSUrl
+        isConnected := t.service.natsClient.IsConnected()
+        
+        // Get detailed connection status
+        connectionStatus := t.service.natsClient.GetConnectionStatus()
+
+        statusMsg := "Streaming inactive"
+        if isStreaming </span><span class="cov8" title="1">{
+                statusMsg = fmt.Sprintf("Streaming active with interval %v", interval)
+        }</span>
+
+        <span class="cov8" title="1">response := &amp;StatusResponse{
+                IsStreaming:      isStreaming,
+                StreamInterval:   interval.String(),
+                NATSUrl:          natsURL,
+                Message:          statusMsg,
+                ConnectionStatus: connectionStatus,
+        }
+
+        // Set UI indicator values
+        response.UIIndicators.StreamActive = isStreaming
+        
+        // Set stream indicator based on status
+        if isStreaming </span><span class="cov8" title="1">{
+                response.UIIndicators.StreamIndicator = "ACTIVE"
+                response.UIIndicators.StatusColor = "#4CAF50" // Green
+        }</span> else<span class="cov8" title="1"> if isConnected </span><span class="cov0" title="0">{
+                response.UIIndicators.StreamIndicator = "READY"
+                response.UIIndicators.StatusColor = "#2196F3" // Blue
+        }</span> else<span class="cov8" title="1"> {
+                response.UIIndicators.StreamIndicator = "OFFLINE"
+                response.UIIndicators.StatusColor = "#F44336" // Red
+        }</span>
+        
+        // Set connection quality
+        <span class="cov8" title="1">if isConnected </span><span class="cov8" title="1">{
+                // Use RTT (round-trip time) to determine connection quality if available
+                if connectionStatus.RTT != "" </span><span class="cov0" title="0">{
+                        rttStr := connectionStatus.RTT
+                        if strings.Contains(rttStr, "µs") || // microseconds
+                           (strings.Contains(rttStr, "ms") &amp;&amp; strings.HasPrefix(rttStr, "0.")) </span><span class="cov0" title="0">{ // &lt; 1ms
+                                response.UIIndicators.ConnectionQuality = "EXCELLENT"
+                        }</span> else<span class="cov0" title="0"> if strings.Contains(rttStr, "ms") &amp;&amp; 
+                                 !strings.HasPrefix(rttStr, "0.") &amp;&amp; 
+                                         !strings.HasPrefix(rttStr, "1") </span><span class="cov0" title="0">{ // 1-9ms
+                                response.UIIndicators.ConnectionQuality = "GOOD"
+                        }</span> else<span class="cov0" title="0"> { // 10ms+ or seconds
+                                response.UIIndicators.ConnectionQuality = "FAIR"
+                        }</span>
+                } else<span class="cov8" title="1"> {
+                        // Fall back to URL-based determination
+                        if strings.Contains(natsURL, "nonlocal.info") </span><span class="cov0" title="0">{
+                                response.UIIndicators.ConnectionQuality = "REMOTE"
+                        }</span> else<span class="cov8" title="1"> if strings.Contains(natsURL, "localhost") </span><span class="cov0" title="0">{
+                                response.UIIndicators.ConnectionQuality = "LOCAL"
+                        }</span> else<span class="cov8" title="1"> {
+                                response.UIIndicators.ConnectionQuality = "CUSTOM"
+                        }</span>
+                }
+        } else<span class="cov8" title="1"> {
+                response.UIIndicators.ConnectionQuality = "DISCONNECTED"
+        }</span>
+
+        <span class="cov8" title="1">return response, nil</span>
+}
+
+// StreamWorldRequest is the request for streaming a specific world
+type StreamWorldRequest struct {
+        WorldID string             `json:"worldId"`
+        UserID  string             `json:"userId"`
+        Sharing *SharingRequest    `json:"sharing,omitempty"`
+}
+
+// SharingRequest defines sharing settings for the stream request
+type SharingRequest struct {
+        IsPublic     bool     `json:"isPublic"`
+        AllowedUsers []string `json:"allowedUsers,omitempty"`
+        ContextLevel string   `json:"contextLevel,omitempty"`
+}
+
+// StreamWorldResponse is the response for the stream world request
+type StreamWorldResponse struct {
+        Success bool   `json:"success"`
+        Message string `json:"message"`
+}
+
+// StreamWorld streams a single world moment
+func (t *StreamingTools) StreamWorld(req *StreamWorldRequest) (*StreamWorldResponse, error) <span class="cov8" title="1">{
+        if req.WorldID == "" </span><span class="cov0" title="0">{
+                return &amp;StreamWorldResponse{
+                        Success: false,
+                        Message: "World ID is required",
+                }, nil
+        }</span>
+
+        // Require user ID for attribution and access control
+        <span class="cov8" title="1">if req.UserID == "" </span><span class="cov0" title="0">{
+                return &amp;StreamWorldResponse{
+                        Success: false,
+                        Message: "User ID is required",
+                }, nil
+        }</span>
+
+        // Apply sharing settings if provided
+        <span class="cov8" title="1">if req.Sharing != nil </span><span class="cov0" title="0">{
+                // Get the world first to apply sharing settings
+                moment, err := t.service.momentGenerator.GenerateMoment(req.WorldID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return &amp;StreamWorldResponse{
+                                Success: false,
+                                Message: fmt.Sprintf("Failed to generate world moment: %v", err),
+                        }, nil
+                }</span>
+                
+                // Apply the sharing settings
+                <span class="cov0" title="0">moment.CreatorID = req.UserID
+                
+                // Create sharing settings from request
+                moment.Sharing = models.SharingSettings{
+                        IsPublic: req.Sharing.IsPublic,
+                        AllowedUsers: req.Sharing.AllowedUsers,
+                }
+                
+                // Apply context level if provided
+                if req.Sharing.ContextLevel != "" </span><span class="cov0" title="0">{
+                        moment.Sharing.ContextLevel = models.ContextLevel(req.Sharing.ContextLevel)
+                }</span> else<span class="cov0" title="0"> {
+                        // Default to partial if not specified
+                        moment.Sharing.ContextLevel = models.ContextLevelPartial
+                }</span>
+                
+                // Add the requesting user to viewers
+                <span class="cov0" title="0">userExists := false
+                for _, viewer := range moment.Viewers </span><span class="cov0" title="0">{
+                        if viewer == req.UserID </span><span class="cov0" title="0">{
+                                userExists = true
+                                break</span>
+                        }
+                }
+                
+                <span class="cov0" title="0">if !userExists </span><span class="cov0" title="0">{
+                        moment.Viewers = append(moment.Viewers, req.UserID)
+                }</span>
+                
+                // Publish directly with user's sharing preferences
+                <span class="cov0" title="0">if err := t.service.natsClient.PublishWorldMoment(moment, req.UserID); err != nil </span><span class="cov0" title="0">{
+                        return &amp;StreamWorldResponse{
+                                Success: false,
+                                Message: fmt.Sprintf("Failed to publish world moment: %v", err),
+                        }, nil
+                }</span>
+                
+                <span class="cov0" title="0">return &amp;StreamWorldResponse{
+                        Success: true,
+                        Message: fmt.Sprintf("Streamed moment for world %s by user %s with custom sharing settings", req.WorldID, req.UserID),
+                }, nil</span>
+        }
+
+        // If no custom sharing, use default service method
+        <span class="cov8" title="1">err := t.service.StreamSingleWorld(req.WorldID, req.UserID)
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;StreamWorldResponse{
+                        Success: false,
+                        Message: fmt.Sprintf("Failed to stream world moment: %v", err),
+                }, nil
+        }</span>
+
+        <span class="cov8" title="1">return &amp;StreamWorldResponse{
+                Success: true,
+                Message: fmt.Sprintf("Streamed moment for world %s by user %s", req.WorldID, req.UserID),
+        }, nil</span>
+}
+
+// UpdateConfigRequest is the request for updating streaming configuration
+type UpdateConfigRequest struct {
+        NATSHost       string `json:"natsHost"`       // NATS host (e.g., "nonlocal.info")
+        NATSPort       int    `json:"natsPort"`       // NATS port (default: 4222)
+        NATSUrl        string `json:"natsUrl"`        // Complete NATS URL (overrides NATSHost/NATSPort if set)
+        StreamID       string `json:"streamId"`       // Stream identifier (default: "ies")
+        StreamInterval int    `json:"streamInterval"` // in milliseconds
+}
+
+// UpdateConfigResponse is the response for the update config request
+type UpdateConfigResponse struct {
+        Success bool   `json:"success"`
+        Message string `json:"message"`
+}
+
+// UpdateConfig updates the streaming configuration
+func (t *StreamingTools) UpdateConfig(req *UpdateConfigRequest) (*UpdateConfigResponse, error) <span class="cov8" title="1">{
+        // Track if we need to create a new client
+        needNewClient := false
+        wasStreaming := t.service.IsStreaming()
+        
+        // Update NATS URL if provided directly
+        if req.NATSUrl != "" </span><span class="cov8" title="1">{
+                t.service.config.NATSUrl = req.NATSUrl
+                needNewClient = true
+        }</span> else<span class="cov0" title="0"> {
+                // Update host and port independently if provided
+                if req.NATSHost != "" </span><span class="cov0" title="0">{
+                        t.service.config.NATSHost = req.NATSHost
+                        needNewClient = true
+                }</span>
+                
+                <span class="cov0" title="0">if req.NATSPort &gt; 0 </span><span class="cov0" title="0">{
+                        t.service.config.NATSPort = req.NATSPort
+                        needNewClient = true
+                }</span>
+                
+                // Reconstruct the URL if host or port changed
+                <span class="cov0" title="0">if needNewClient </span><span class="cov0" title="0">{
+                        t.service.config.NATSUrl = fmt.Sprintf("nats://%s:%d", 
+                                t.service.config.NATSHost, 
+                                t.service.config.NATSPort)
+                }</span>
+        }
+        
+        // Update stream ID if provided
+        <span class="cov8" title="1">streamIDChanged := false
+        if req.StreamID != "" </span><span class="cov0" title="0">{
+                t.service.config.StreamID = req.StreamID
+                streamIDChanged = true
+        }</span>
+        
+        // If we need to create a new client due to URL or stream ID changes
+        <span class="cov8" title="1">if needNewClient || streamIDChanged </span><span class="cov8" title="1">{
+                // Stop streaming if active
+                if wasStreaming </span><span class="cov0" title="0">{
+                        t.service.StopStreaming()
+                }</span>
+                
+                // Close the old connection
+                <span class="cov8" title="1">t.service.natsClient.Close()
+                
+                // Create a new client with the updated configuration
+                t.service.natsClient = NewNATSClientWithStreamID(
+                        t.service.config.NATSUrl, 
+                        t.service.config.StreamID)
+                
+                // Reconnect and resume streaming if needed
+                err := t.service.natsClient.Connect()
+                if err != nil </span><span class="cov0" title="0">{
+                        return &amp;UpdateConfigResponse{
+                                Success: false,
+                                Message: fmt.Sprintf("Failed to connect to new NATS server: %v", err),
+                        }, nil
+                }</span>
+                
+                <span class="cov8" title="1">if wasStreaming </span><span class="cov0" title="0">{
+                        if err := t.service.StartStreaming(); err != nil </span><span class="cov0" title="0">{
+                                return &amp;UpdateConfigResponse{
+                                        Success: false,
+                                        Message: fmt.Sprintf("Failed to restart streaming: %v", err),
+                                }, nil
+                        }</span>
+                }
+        }
+
+        // Update stream interval if provided
+        <span class="cov8" title="1">if req.StreamInterval &gt; 0 </span><span class="cov8" title="1">{
+                t.service.config.StreamInterval = time.Duration(req.StreamInterval) * time.Millisecond
+        }</span>
+
+        <span class="cov8" title="1">return &amp;UpdateConfigResponse{
+                Success: true,
+                Message: fmt.Sprintf("Configuration updated successfully (NATS: %s, Stream ID: %s)",
+                        t.service.config.NATSUrl,
+                        t.service.config.StreamID),
+        }, nil</span>
+}
+
+// GetStreamingToolMethods returns the available streaming tool methods
+func GetStreamingToolMethods() map[string]interface{} <span class="cov8" title="1">{
+        return map[string]interface{}{
+                "streaming_startStreaming": (*StreamingTools).StartStreaming,
+                "streaming_stopStreaming":  (*StreamingTools).StopStreaming,
+                "streaming_status":         (*StreamingTools).Status,
+                "streaming_streamWorld":    (*StreamingTools).StreamWorld,
+                "streaming_updateConfig":   (*StreamingTools).UpdateConfig,
+        }
+}</pre>
+		
+		<pre class="file" id="file8" style="display: none">package streaming
+
+import (
+        "testing"
+        "time"
+
+        "github.com/bmorphism/vibespace-mcp-go/models"
+        "github.com/bmorphism/vibespace-mcp-go/repository"
+        "github.com/stretchr/testify/assert"
+)
+
+// This test suite focuses on the StreamingTools component using mock NATS client
+
+func setupToolsTest(t *testing.T) (*repository.Repository, *MockNATSClient, *StreamingTools) <span class="cov8" title="1">{
+        // Create test repository
+        repo := repository.NewRepository()
+        
+        // Add a test world
+        world := models.World{
+                ID:          "test-world",
+                Name:        "Test World",
+                Description: "A world for testing",
+                Type:        models.WorldTypeVirtual,
+                CreatorID:   "user123",
+                Sharing: models.SharingSettings{
+                        IsPublic:     true,
+                        ContextLevel: models.ContextLevelFull,
+                },
+        }
+        err := repo.AddWorld(world)
+        assert.NoError(t, err)
+        
+        // Create mock NATS client
+        mockNats := NewMockNATSClient()
+        
+        // Create config
+        config := &amp;StreamingConfig{
+                NATSUrl:        "nats://test:4222",
+                StreamInterval: 100 * time.Millisecond,
+                StreamID:       "test-stream",
+                AutoStart:      false,
+        }
+        
+        // Create service
+        service := CreateStreamingService(repo, config, mockNats)
+        
+        // Create tools
+        tools := NewStreamingTools(service)
+        
+        return repo, mockNats, tools
+}</span>
+
+func TestToolsStartStreaming(t *testing.T) <span class="cov8" title="1">{
+        _, mockNats, tools := setupToolsTest(t)
+        
+        // Call StartStreaming
+        req := &amp;StartStreamingRequest{
+                Interval: 200, // 200ms
+        }
+        
+        resp, err := tools.StartStreaming(req)
+        assert.NoError(t, err)
+        assert.NotNil(t, resp)
+        assert.True(t, resp.Success)
+        assert.Contains(t, resp.Message, "Streaming started with interval")
+        
+        // Verify streaming is active
+        assert.True(t, tools.service.IsStreaming())
+        
+        // Verify connected to NATS
+        assert.True(t, mockNats.IsConnected())
+        
+        // Verify interval was updated
+        assert.Equal(t, 200*time.Millisecond, tools.service.config.StreamInterval)
+        
+        // Call StartStreaming again
+        resp, err = tools.StartStreaming(req)
+        assert.NoError(t, err)
+        assert.Contains(t, resp.Message, "Streaming started with interval")
+}</span>
+
+func TestToolsStopStreaming(t *testing.T) <span class="cov8" title="1">{
+        _, _, tools := setupToolsTest(t)
+        
+        // Set streaming active
+        tools.service.streamingActive = true
+        tools.service.stopChan = make(chan struct{})
+        
+        // Call StopStreaming
+        resp, err := tools.StopStreaming()
+        assert.NoError(t, err)
+        assert.NotNil(t, resp)
+        assert.True(t, resp.Success)
+        assert.Equal(t, "Streaming stopped", resp.Message)
+        
+        // Verify streaming is stopped
+        assert.False(t, tools.service.IsStreaming())
+        
+        // Call StopStreaming again
+        resp, err = tools.StopStreaming()
+        assert.NoError(t, err)
+        assert.Equal(t, "Streaming stopped", resp.Message)
+}</span>
+
+func TestToolsStatus(t *testing.T) <span class="cov8" title="1">{
+        _, mockNats, tools := setupToolsTest(t)
+        
+        // Get status when not streaming
+        status, err := tools.Status()
+        assert.NoError(t, err)
+        assert.Equal(t, "nats://test:4222", status.NATSUrl)
+        assert.False(t, status.IsStreaming)
+        assert.False(t, status.UIIndicators.StreamActive)
+        assert.Equal(t, "OFFLINE", status.UIIndicators.StreamIndicator)
+        assert.Equal(t, "#F44336", status.UIIndicators.StatusColor) // Red for offline
+        
+        // Set streaming active
+        tools.service.streamingActive = true
+        mockNats.Connect()
+        
+        // Get status when streaming
+        status, err = tools.Status()
+        assert.NoError(t, err)
+        assert.True(t, status.IsStreaming)
+        assert.True(t, status.UIIndicators.StreamActive)
+        assert.Equal(t, "ACTIVE", status.UIIndicators.StreamIndicator)
+        assert.Equal(t, "#4CAF50", status.UIIndicators.StatusColor) // Green for online
+        
+        // Test with NATS disconnected
+        mockNats.Close()
+        
+        status, err = tools.Status()
+        assert.NoError(t, err)
+        assert.True(t, status.IsStreaming) // Service still thinks it's streaming
+        assert.Equal(t, "ACTIVE", status.UIIndicators.StreamIndicator)
+        assert.Equal(t, "#4CAF50", status.UIIndicators.StatusColor) // Green for active
+}</span>
+
+func TestToolsStreamWorld(t *testing.T) <span class="cov8" title="1">{
+        repo, mockNats, tools := setupToolsTest(t)
+        
+        // Add a test vibe
+        vibe := models.Vibe{
+                ID:     "test-vibe",
+                Name:   "Test Vibe",
+                Energy: 0.8,
+                Mood:   models.MoodCalm,
+        }
+        err := repo.AddVibe(vibe)
+        assert.NoError(t, err)
+        
+        // Associate vibe with world
+        err = repo.SetWorldVibe("test-world", "test-vibe")
+        assert.NoError(t, err)
+        
+        // Connect mock NATS
+        mockNats.Connect()
+        
+        // Create stream request
+        req := &amp;StreamWorldRequest{
+                WorldID: "test-world",
+                UserID:  "user123",
+        }
+        
+        // Call StreamWorld
+        resp, err := tools.StreamWorld(req)
+        assert.NoError(t, err)
+        assert.NotNil(t, resp)
+        assert.True(t, resp.Success)
+        assert.Contains(t, resp.Message, "Streamed moment for world")
+        
+        // Verify moment was published
+        moments := mockNats.GetPublishedMoments()
+        assert.Equal(t, 1, len(moments))
+        assert.Equal(t, "test-world", moments[0].WorldID)
+        assert.Equal(t, "test-vibe", moments[0].VibeID)
+        
+        // Test with non-existent world
+        req.WorldID = "non-existent"
+        resp, err = tools.StreamWorld(req)
+        assert.NotNil(t, resp)
+        assert.False(t, resp.Success)
+}</span>
+
+func TestToolsUpdateConfig(t *testing.T) <span class="cov8" title="1">{
+        _, mockNats, tools := setupToolsTest(t)
+        _ = mockNats // Unused but retained for consistency with other tests
+        
+        // Initial config values
+        assert.Equal(t, "nats://test:4222", tools.service.config.NATSUrl)
+        assert.Equal(t, 100*time.Millisecond, tools.service.config.StreamInterval)
+        assert.False(t, tools.service.config.AutoStart)
+        
+        // Create config update request
+        req := &amp;UpdateConfigRequest{
+                NATSUrl:        "nats://new-server:5222",
+                StreamInterval: 500, // 500ms
+        }
+        
+        // Call UpdateConfig
+        resp, err := tools.UpdateConfig(req)
+        assert.NoError(t, err)
+        assert.NotNil(t, resp)
+        assert.True(t, resp.Success)
+        assert.Contains(t, resp.Message, "Configuration updated successfully")
+        
+        // Verify config was updated
+        assert.Equal(t, "nats://new-server:5222", tools.service.config.NATSUrl)
+        assert.Equal(t, 500*time.Millisecond, tools.service.config.StreamInterval)
+        // AutoStart is not set in this test
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -1,0 +1,293 @@
+package streaming
+
+import (
+	"testing"
+	"time"
+
+	"github.com/bmorphism/vibespace-mcp-go/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+// TestToolsStatusFullCoverage tests all paths in the Status method
+func TestToolsStatusFullCoverage(t *testing.T) {
+	// Create mocks
+	mockClient := new(MockNATSClient)
+	mockRepo := &MockRepository{}
+
+	// Create test status
+	testStatus := ConnectionStatus{
+		IsConnected:     true,
+		URL:             "nats://test:4222",
+		ServerID:        "test-server",
+		ConnectedURL:    "nats://test:4222",
+		ReconnectCount:  5,
+		DisconnectCount: 3,
+		LastConnectTime: time.Now(),
+		LastErrorMessage: "test error",
+		RTT:             "5ms",
+	}
+	
+	// Set up expectations
+	mockClient.On("IsConnected").Return(true)
+	mockClient.On("GetConnectionStatus").Return(testStatus)
+	
+	// Create tools
+	config := &StreamingConfig{
+		NATSUrl:        "nats://test:4222",
+		StreamID:       "test-stream",
+		StreamInterval: 1 * time.Second,
+		AutoStart:      false,
+	}
+	
+	tools := &StreamingTools{
+		service: &StreamingService{
+			natsClient: mockClient,
+			config:     config,
+			repo:       mockRepo,
+			streamingActive: true,
+		},
+	}
+	
+	// Test Status method
+	resp, err := tools.Status(&StatusRequest{})
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, "Connected to NATS server", resp.Message)
+	assert.Equal(t, true, resp.IsConnected)
+	assert.Equal(t, true, resp.IsStreaming)
+	assert.Equal(t, "nats://test:4222", resp.NATSUrl)
+	assert.Equal(t, "test-stream", resp.StreamID)
+	assert.Equal(t, "test-server", resp.ServerID)
+	assert.Equal(t, 5, resp.ReconnectCount)
+	assert.Equal(t, 3, resp.DisconnectCount)
+	assert.Equal(t, "5ms", resp.RTT)
+	
+	// Test not connected case
+	mockClient.On("IsConnected").Return(false).Once()
+	resp, err = tools.Status(&StatusRequest{})
+	assert.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Contains(t, resp.Message, "Not connected")
+}
+
+// TestStartStreamingFullCoverage tests all paths in the StartStreaming method
+func TestStartStreamingFullCoverage(t *testing.T) {
+	// Create mocks
+	mockClient := new(MockNATSClient)
+	mockRepo := &MockRepository{}
+	
+	// Set up expectations
+	mockClient.On("IsConnected").Return(true)
+	mockClient.On("Connect").Return(nil)
+	
+	// Create tools with a non-streaming service
+	config := &StreamingConfig{
+		NATSUrl:        "nats://test:4222",
+		StreamID:       "test-stream",
+		StreamInterval: 1 * time.Second,
+		AutoStart:      false,
+	}
+	
+	service := &StreamingService{
+		natsClient:      mockClient,
+		config:          config,
+		repo:            mockRepo,
+		streamingActive: false,
+	}
+	
+	tools := &StreamingTools{
+		service: service,
+	}
+	
+	// Test StartStreaming
+	resp, err := tools.StartStreaming(&StartStreamingRequest{})
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "Started streaming")
+	
+	// Test already streaming case
+	service.streamingActive = true
+	resp, err = tools.StartStreaming(&StartStreamingRequest{})
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "Already streaming")
+	
+	// Test connection error case
+	service.streamingActive = false
+	mockClient.On("Connect").Return(assert.AnError).Once()
+	resp, err = tools.StartStreaming(&StartStreamingRequest{})
+	assert.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Contains(t, resp.Message, "Failed to connect")
+}
+
+// TestStreamWorldFullCoverage tests all paths in the StreamWorld method
+func TestStreamWorldFullCoverage(t *testing.T) {
+	// Create mocks
+	mockClient := new(MockNATSClient)
+	mockRepo := &MockRepository{}
+	
+	// Regular world
+	testWorld := &models.World{
+		ID:          "test-world",
+		Name:        "Test World",
+		Description: "A test world",
+	}
+	
+	// Set up expectations
+	mockClient.On("IsConnected").Return(true)
+	mockClient.On("Connect").Return(nil)
+	mockClient.On("PublishWorldMoment", mock.Anything, mock.Anything).Return(nil)
+	mockRepo.On("GetWorld", "test-world").Return(testWorld, nil)
+	mockRepo.On("GetWorld", "nonexistent-world").Return(nil, assert.AnError)
+	
+	// Create tools
+	config := &StreamingConfig{
+		NATSUrl:        "nats://test:4222",
+		StreamID:       "test-stream",
+		StreamInterval: 1 * time.Second,
+		AutoStart:      false,
+	}
+	
+	service := &StreamingService{
+		natsClient: mockClient,
+		config:     config,
+		repo:       mockRepo,
+		momentGenerator: NewMomentGenerator(mockRepo),
+	}
+	
+	tools := &StreamingTools{
+		service: service,
+	}
+	
+	// Test 1: Basic streaming request
+	req := &StreamWorldRequest{
+		WorldID: "test-world",
+		UserID:  "test-user",
+	}
+	
+	resp, err := tools.StreamWorld(req)
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "Streamed moment")
+	
+	// Test 2: With sharing settings
+	req = &StreamWorldRequest{
+		WorldID: "test-world",
+		UserID:  "test-user",
+		Sharing: &SharingRequest{
+			IsPublic:     true,
+			AllowedUsers: []string{"other-user"},
+			ContextLevel: "full",
+		},
+	}
+	
+	resp, err = tools.StreamWorld(req)
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "custom sharing")
+	
+	// Test 3: Nonexistent world
+	req = &StreamWorldRequest{
+		WorldID: "nonexistent-world",
+		UserID:  "test-user",
+	}
+	
+	resp, err = tools.StreamWorld(req)
+	assert.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Contains(t, resp.Message, "Failed to stream")
+	
+	// Test 4: Publication error
+	mockClient.On("PublishWorldMoment", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+	
+	req = &StreamWorldRequest{
+		WorldID: "test-world",
+		UserID:  "test-user",
+	}
+	
+	resp, err = tools.StreamWorld(req)
+	assert.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Contains(t, resp.Message, "Failed to publish")
+}
+
+// TestUpdateConfigFullCoverage tests all paths in the UpdateConfig method
+func TestUpdateConfigFullCoverage(t *testing.T) {
+	// Create mocks
+	mockClient := new(MockNATSClient)
+	mockRepo := &MockRepository{}
+	
+	// Set up expectations
+	mockClient.On("IsConnected").Return(true)
+	mockClient.On("Connect").Return(nil)
+	mockClient.On("Close").Return()
+	
+	// Create tools
+	initialConfig := &StreamingConfig{
+		NATSUrl:        "nats://initial:4222",
+		StreamID:       "initial-stream",
+		StreamInterval: 1 * time.Second,
+		AutoStart:      false,
+	}
+	
+	service := &StreamingService{
+		natsClient:      mockClient,
+		config:          initialConfig,
+		repo:            mockRepo,
+		streamingActive: false,
+		momentGenerator: NewMomentGenerator(mockRepo),
+		stopChan:        make(chan struct{}),
+	}
+	
+	tools := &StreamingTools{
+		service: service,
+	}
+	
+	// Test 1: Update URL and stream ID
+	req := &UpdateConfigRequest{
+		NATSUrl:  "nats://new:4222",
+		StreamID: "new-stream",
+	}
+	
+	resp, err := tools.UpdateConfig(req)
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Contains(t, resp.Message, "Configuration updated successfully")
+	assert.Equal(t, "nats://new:4222", service.config.NATSUrl)
+	assert.Equal(t, "new-stream", service.config.StreamID)
+	
+	// Test 2: Update stream interval
+	req = &UpdateConfigRequest{
+		StreamInterval: 2000, // 2 seconds
+	}
+	
+	resp, err = tools.UpdateConfig(req)
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, 2*time.Second, service.config.StreamInterval)
+	
+	// Test 3: Update with streaming active
+	service.streamingActive = true
+	req = &UpdateConfigRequest{
+		NATSUrl: "nats://another:4222",
+	}
+	
+	resp, err = tools.UpdateConfig(req)
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, "nats://another:4222", service.config.NATSUrl)
+	
+	// Test 4: Connection error
+	service.streamingActive = false
+	mockClient.On("Connect").Return(assert.AnError).Once()
+	req = &UpdateConfigRequest{
+		NATSUrl: "nats://error:4222",
+	}
+	
+	resp, err = tools.UpdateConfig(req)
+	assert.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Contains(t, resp.Message, "Failed to connect")
+}

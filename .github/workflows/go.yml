@@ -1,0 +1,56 @@
+name: Go Tests and Linting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        check-latest: true
+
+    - name: Install Just
+      uses: extractions/setup-just@v2
+      with:
+        just-version: '1.14'
+
+    - name: Build
+      run: just build
+
+    - name: Run Tests
+      run: just test
+
+    - name: Check Code Coverage
+      run: go test ./rpcmethods/... ./streaming/... ./tests/... -coverprofile=coverage.out && go tool cover -func=coverage.out
+      
+    - name: Run Basic Linter
+      run: go vet ./rpcmethods/... ./streaming/...
+      continue-on-error: true
+      
+    - name: Run Advanced Linter
+      run: |
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        golangci-lint run --timeout=5m ./rpcmethods/... ./streaming/...
+      continue-on-error: true
+        
+    - name: Generate Coverage Report
+      run: |
+        go test ./rpcmethods/... ./streaming/... ./tests/... -coverprofile=coverage.out
+        
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          coverage.out
+          coverage.html
+        retention-days: 7
