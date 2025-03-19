@@ -107,7 +107,7 @@ func TestServicePublishVibeUpdateStartStop(t *testing.T) {
 	// Test with publish error
 	mockClient.SetConnectError(nil)
 	mockClient.Connect()
-	mockClient.SetPublishVibeError(assert.AnError)
+	mockClient.SetPublishVibeError(fmt.Errorf("simulated publish error"))
 	err = service.PublishVibeUpdate("test-world", vibe)
-	assert.Error(t, err)
+	assert.Error(t, err, "Should return error with publish error")
 }
