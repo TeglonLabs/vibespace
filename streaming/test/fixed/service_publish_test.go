@@ -63,14 +63,13 @@ func TestServicePublishVibeUpdated(t *testing.T) {
 	// Create a new mock client for the disconnected test
 	mockDisconnectedClient := new(MockNATSClient)
 	mockDisconnectedClient.On("IsConnected").Return(false)
-	mockDisconnectedClient.On("Connect").Return(assert.AnError).Once()
 	
 	// Replace the client in the service
 	service.SetClient(mockDisconnectedClient)
 	
 	err = service.PublishVibeUpdate("test-world", vibe)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "assert.AnError")
+	assert.Contains(t, err.Error(), "not connected to NATS")
 	mockDisconnectedClient.AssertExpectations(t)
 }
 

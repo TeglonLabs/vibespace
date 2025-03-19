@@ -276,14 +276,13 @@ func TestServicePublishVibeUpdate(t *testing.T) {
 	assert.Contains(t, publishedVibes, "test-world")
 	assert.Equal(t, vibe, publishedVibes["test-world"])
 	
-	// Test with connection error
+	// Test when disconnected
 	mockClient.Close()
-	mockClient.SetConnectError(assert.AnError)
 	
 	// Should get an error
 	err = service.PublishVibeUpdate("test-world", vibe)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to connect")
+	assert.Contains(t, err.Error(), "not connected to NATS")
 	
 	// Reset client and test with publish error
 	mockClient.SetConnectError(nil)

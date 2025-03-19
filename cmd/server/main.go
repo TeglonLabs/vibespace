@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -10,6 +13,8 @@ import (
 	"github.com/bmorphism/vibespace-mcp-go/repository"
 	"github.com/bmorphism/vibespace-mcp-go/rpcmethods"
 	"github.com/bmorphism/vibespace-mcp-go/streaming"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 const (
@@ -19,7 +24,7 @@ const (
 
 func main() {
 	// Create a repository
-	repo := repository.NewInMemoryRepository()
+	repo := repository.NewRepository()
 
 	// Add some initial vibes
 	addInitialVibes(repo)
@@ -40,27 +45,234 @@ func main() {
 	streamingService := streaming.NewStreamingService(repo, streamingConfig)
 
 	// Set up streaming tools
-	streamingTools := streaming.NewStreamingTools(streamingService, streamingConfig)
+	streamingTools := streaming.NewStreamingTools(streamingService)
 
-	// Configure MCP server
-	server := &http.Server{
+	// Create mcp server
+	mcpServer := server.NewMCPServer("vibespace-mcp", "1.0.0")
+
+	// Get the streaming tool methods and register them
+	fmt.Println("Registering streaming tools:")
+	
+	// Register streaming tools with the MCPServer
+	startStreamingTool := mcp.NewTool("streaming_startStreaming", func(t *mcp.Tool) {
+		t.Description = "Start streaming world moments"
+	})
+	mcpServer.AddTool(startStreamingTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Convert JSON-RPC request to our internal format
+		interval := 0
+		if intervalVal, ok := req.Params.Arguments["interval"]; ok {
+			if intervalFloat, ok := intervalVal.(float64); ok {
+				interval = int(intervalFloat)
+			}
+		}
+		
+		// Call the streaming tool
+		response, err := streamingTools.StartStreaming(&streaming.StartStreamingRequest{
+			Interval: interval,
+		})
+		
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		
+		// Convert response to JSON-RPC format
+		resultText := response.Message
+		if !response.Success {
+			return mcp.NewToolResultError(resultText), nil
+		}
+		
+		return mcp.NewToolResultText(resultText), nil
+	})
+	fmt.Println("  - streaming_startStreaming: Start streaming world moments")
+	
+	// Register stop streaming tool
+	stopStreamingTool := mcp.NewTool("streaming_stopStreaming", func(t *mcp.Tool) {
+		t.Description = "Stop streaming world moments"
+	})
+	mcpServer.AddTool(stopStreamingTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		response, err := streamingTools.StopStreaming()
+		
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		
+		resultText := response.Message
+		if !response.Success {
+			return mcp.NewToolResultError(resultText), nil
+		}
+		
+		return mcp.NewToolResultText(resultText), nil
+	})
+	fmt.Println("  - streaming_stopStreaming: Stop streaming world moments")
+	
+	// Register status tool
+	statusTool := mcp.NewTool("streaming_status", func(t *mcp.Tool) {
+		t.Description = "Get current streaming status"
+	})
+	mcpServer.AddTool(statusTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		status, err := streamingTools.Status()
+		
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		
+		// Convert to JSON
+		statusJSON, err := json.Marshal(status)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Error marshaling status: %v", err)), nil
+		}
+		
+		return mcp.NewToolResultText(string(statusJSON)), nil
+	})
+	fmt.Println("  - streaming_status: Get current streaming status")
+	
+	// Register streamWorld tool
+	streamWorldTool := mcp.NewTool("streaming_streamWorld", func(t *mcp.Tool) {
+		t.Description = "Stream a single world moment"
+	})
+	mcpServer.AddTool(streamWorldTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract arguments
+		worldID, _ := req.Params.Arguments["worldId"].(string)
+		userID, _ := req.Params.Arguments["userId"].(string)
+		
+		// Create request
+		streamReq := &streaming.StreamWorldRequest{
+			WorldID: worldID,
+			UserID:  userID,
+		}
+		
+		// Check for sharing settings
+		if sharingMap, ok := req.Params.Arguments["sharing"].(map[string]interface{}); ok {
+			sharing := &streaming.SharingRequest{}
+			
+			// Extract sharing fields
+			if isPublic, ok := sharingMap["isPublic"].(bool); ok {
+				sharing.IsPublic = isPublic
+			}
+			
+			if contextLevel, ok := sharingMap["contextLevel"].(string); ok {
+				sharing.ContextLevel = contextLevel
+			}
+			
+			if allowedUsersInterface, ok := sharingMap["allowedUsers"].([]interface{}); ok {
+				allowedUsers := make([]string, len(allowedUsersInterface))
+				for i, u := range allowedUsersInterface {
+					if userStr, ok := u.(string); ok {
+						allowedUsers[i] = userStr
+					}
+				}
+				sharing.AllowedUsers = allowedUsers
+			}
+			
+			streamReq.Sharing = sharing
+		}
+		
+		// Call the streaming tool
+		response, err := streamingTools.StreamWorld(streamReq)
+		
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		
+		resultText := response.Message
+		if !response.Success {
+			return mcp.NewToolResultError(resultText), nil
+		}
+		
+		return mcp.NewToolResultText(resultText), nil
+	})
+	fmt.Println("  - streaming_streamWorld: Stream a single world moment")
+	
+	// Register updateConfig tool
+	updateConfigTool := mcp.NewTool("streaming_updateConfig", func(t *mcp.Tool) {
+		t.Description = "Update streaming configuration"
+	})
+	mcpServer.AddTool(updateConfigTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract arguments
+		config := &streaming.UpdateConfigRequest{}
+		
+		if natsHost, ok := req.Params.Arguments["natsHost"].(string); ok {
+			config.NATSHost = natsHost
+		}
+		
+		if natsPort, ok := req.Params.Arguments["natsPort"].(float64); ok {
+			config.NATSPort = int(natsPort)
+		}
+		
+		if natsURL, ok := req.Params.Arguments["natsUrl"].(string); ok {
+			config.NATSUrl = natsURL
+		}
+		
+		if streamID, ok := req.Params.Arguments["streamId"].(string); ok {
+			config.StreamID = streamID
+		}
+		
+		if streamInterval, ok := req.Params.Arguments["streamInterval"].(float64); ok {
+			config.StreamInterval = int(streamInterval)
+		}
+		
+		// Call the streaming tool
+		response, err := streamingTools.UpdateConfig(config)
+		
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		
+		resultText := response.Message
+		if !response.Success {
+			return mcp.NewToolResultError(resultText), nil
+		}
+		
+		return mcp.NewToolResultText(resultText), nil
+	})
+	fmt.Println("  - streaming_updateConfig: Update streaming configuration")
+
+	// Register resource handlers from server wrapper
+	handler := rpcmethods.WrapMCPServer(mcpServer)
+
+	// Configure HTTP server
+	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", serverPort),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Handle MCP RPC requests
+			if r.Method == http.MethodPost {
+				// Read the request body
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
+					return
+				}
+				defer r.Body.Close()
+				
+				// Process the request
+				response := handler.HandleMessage(r.Context(), body)
+				
+				// Marshal the response
+				responseJSON, err := json.Marshal(response)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Error marshaling response: %v", err), http.StatusInternalServerError)
+					return
+				}
+				
+				// Set content type and write response
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(responseJSON)
+			} else {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				w.Write([]byte("Method not allowed"))
+			}
+		}),
 	}
-
-	// Create the handler
-	handler := rpcmethods.CreateMCPRequestHandler(repo, streamingTools)
-
-	// Set the handler
-	server.Handler = handler
 
 	// Start the server
 	fmt.Println(startupMessageVibe)
-	log.Fatal(server.ListenAndServe())
+	log.Fatal(httpServer.ListenAndServe())
 }
 
-func addInitialVibes(repo repository.Repository) {
+func addInitialVibes(repo repository.VibeRepository) {
 	// Add some pre-configured vibes
-	vibes := []*models.Vibe{
+	vibes := []models.Vibe{
 		{
 			ID:          "calm",
 			Name:        "Calm",
@@ -114,16 +326,16 @@ func addInitialVibes(repo repository.Repository) {
 	}
 
 	for _, vibe := range vibes {
-		_, err := repo.CreateVibe(vibe)
+		err := repo.AddVibe(vibe)
 		if err != nil {
 			fmt.Printf("Error creating vibe %s: %v\n", vibe.Name, err)
 		}
 	}
 }
 
-func addInitialWorlds(repo repository.Repository) {
+func addInitialWorlds(repo repository.WorldRepository) {
 	// Add some pre-configured worlds
-	worlds := []*models.World{
+	worlds := []models.World{
 		{
 			ID:          "office",
 			Name:        "Office Space",
@@ -181,7 +393,7 @@ func addInitialWorlds(repo repository.Repository) {
 	}
 
 	for _, world := range worlds {
-		_, err := repo.CreateWorld(world)
+		err := repo.AddWorld(world)
 		if err != nil {
 			fmt.Printf("Error creating world %s: %v\n", world.Name, err)
 		}
