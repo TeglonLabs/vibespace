@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -96,12 +97,12 @@ func TestServicePublishVibeUpdateStartStop(t *testing.T) {
 	// Test when not connected
 	mockClient.SimulateDisconnect()
 	err = service.PublishVibeUpdate("test-world", vibe)
-	assert.Error(t, err)
+	assert.Error(t, err, "Should return error when not connected")
 	
 	// Test with connect error
-	mockClient.SetConnectError(assert.AnError)
+	mockClient.SetConnectError(fmt.Errorf("simulated connection error"))
 	err = service.PublishVibeUpdate("test-world", vibe)
-	assert.Error(t, err)
+	assert.Error(t, err, "Should return error with connection error")
 	
 	// Test with publish error
 	mockClient.SetConnectError(nil)
