@@ -529,3 +529,299 @@ func max[T ~int | ~float32 | ~float64](a, b T) T {
 	}
 	return b
 }
+
+// ComonadicVibeContext represents a vibe within its spatial-temporal context
+type ComonadicVibeContext struct {
+	center     *models.Vibe
+	neighbors  []*models.Vibe
+	temporal   []*models.Vibe // Past and future states
+	gradient   TernaryState   // Directional tendency
+	coherence  float64        // Context coherence measure
+}
+
+// Extract implements the comonadic extract operation - get the focused value
+func (cvc *ComonadicVibeContext) Extract() *models.Vibe {
+	return cvc.center
+}
+
+// Duplicate implements comonadic duplication - create context-of-contexts
+func (cvc *ComonadicVibeContext) Duplicate() *ComonadicVibeContext {
+	// Create a meta-context where each neighbor becomes a center
+	neighborContexts := make([]*models.Vibe, len(cvc.neighbors))
+	for i, neighbor := range cvc.neighbors {
+		// Each neighbor gets elevated to be a potential center
+		neighborContexts[i] = neighbor
+	}
+	
+	return &ComonadicVibeContext{
+		center:    cvc.center,
+		neighbors: neighborContexts,
+		temporal:  cvc.temporal,
+		gradient:  cvc.gradient,
+		coherence: cvc.coherence * 0.9, // Slight coherence decay in duplication
+	}
+}
+
+// Extend implements comonadic extension - apply context-aware transformation
+func (cvc *ComonadicVibeContext) Extend(f func(*ComonadicVibeContext) *models.Vibe) *ComonadicVibeContext {
+	newCenter := f(cvc)
+	
+	// Apply the transformation to each neighbor context
+	newNeighbors := make([]*models.Vibe, len(cvc.neighbors))
+	for i, neighbor := range cvc.neighbors {
+		// Create mini-context for each neighbor
+		neighborCtx := &ComonadicVibeContext{
+			center:    neighbor,
+			neighbors: []*models.Vibe{cvc.center}, // Neighbor sees center as its neighbor
+			temporal:  cvc.temporal,
+			gradient:  -cvc.gradient, // Invert gradient for neighbor perspective
+			coherence: cvc.coherence,
+		}
+		newNeighbors[i] = f(neighborCtx)
+	}
+	
+	return &ComonadicVibeContext{
+		center:    newCenter,
+		neighbors: newNeighbors,
+		temporal:  cvc.temporal,
+		gradient:  cvc.gradient,
+		coherence: cvc.coherence,
+	}
+}
+
+// TernaryLogicGate represents sophisticated ternary operations
+type TernaryLogicGate struct {
+	operator string
+	truthTable map[[2]TernaryState]TernaryState
+}
+
+// NewTernaryLogicGate creates a gate with specified truth table
+func NewTernaryLogicGate(operator string) *TernaryLogicGate {
+	gate := &TernaryLogicGate{
+		operator: operator,
+		truthTable: make(map[[2]TernaryState]TernaryState),
+	}
+	
+	// Define truth tables for different operators
+	switch operator {
+	case "consensus":
+		// Ternary consensus: agrees when inputs agree, neutral otherwise
+		gate.defineTruthTable(map[[2]TernaryState]TernaryState{
+			{TernaryNegative, TernaryNegative}: TernaryNegative,
+			{TernaryNeutral, TernaryNeutral}:   TernaryNeutral,
+			{TernaryPositive, TernaryPositive}: TernaryPositive,
+			// All other combinations default to neutral
+		})
+	case "amplify":
+		// Amplification: strengthens agreement, weakens disagreement
+		gate.defineTruthTable(map[[2]TernaryState]TernaryState{
+			{TernaryNegative, TernaryNegative}: TernaryNegative,
+			{TernaryPositive, TernaryPositive}: TernaryPositive,
+			{TernaryNegative, TernaryPositive}: TernaryNeutral,
+			{TernaryPositive, TernaryNegative}: TernaryNeutral,
+			// Neutral input preserves the other
+			{TernaryNeutral, TernaryNegative}:  TernaryNegative,
+			{TernaryNeutral, TernaryPositive}:  TernaryPositive,
+			{TernaryNegative, TernaryNeutral}:  TernaryNegative,
+			{TernaryPositive, TernaryNeutral}:  TernaryPositive,
+			{TernaryNeutral, TernaryNeutral}:   TernaryNeutral,
+		})
+	case "inhibit":
+		// Inhibition: positive inhibits, negative disinhibits
+		gate.defineTruthTable(map[[2]TernaryState]TernaryState{
+			{TernaryNegative, TernaryPositive}: TernaryNegative, // Negative disinhibits positive
+			{TernaryPositive, TernaryNegative}: TernaryNeutral,  // Positive inhibits negative
+			{TernaryPositive, TernaryPositive}: TernaryNeutral,  // Positive inhibits positive
+			{TernaryNegative, TernaryNegative}: TernaryNegative, // Double negative
+			{TernaryNeutral, TernaryNeutral}:   TernaryNeutral,
+			{TernaryNeutral, TernaryPositive}:  TernaryNeutral,
+			{TernaryNeutral, TernaryNegative}:  TernaryNegative,
+			{TernaryPositive, TernaryNeutral}:  TernaryNeutral,
+			{TernaryNegative, TernaryNeutral}:  TernaryNegative,
+		})
+	default:
+		// Default to identity operation
+		for _, a := range []TernaryState{TernaryNegative, TernaryNeutral, TernaryPositive} {
+			for _, b := range []TernaryState{TernaryNegative, TernaryNeutral, TernaryPositive} {
+				gate.truthTable[[2]TernaryState{a, b}] = a // First input wins
+			}
+		}
+	}
+	
+	return gate
+}
+
+// defineTruthTable helper to set up truth table with defaults
+func (tlg *TernaryLogicGate) defineTruthTable(table map[[2]TernaryState]TernaryState) {
+	// Initialize all combinations to neutral by default
+	for _, a := range []TernaryState{TernaryNegative, TernaryNeutral, TernaryPositive} {
+		for _, b := range []TernaryState{TernaryNegative, TernaryNeutral, TernaryPositive} {
+			tlg.truthTable[[2]TernaryState{a, b}] = TernaryNeutral
+		}
+	}
+	
+	// Override with specific table
+	for key, value := range table {
+		tlg.truthTable[key] = value
+	}
+}
+
+// Apply executes the ternary logic operation
+func (tlg *TernaryLogicGate) Apply(a, b TernaryState) TernaryState {
+	if result, exists := tlg.truthTable[[2]TernaryState{a, b}]; exists {
+		return result
+	}
+	return TernaryNeutral // Safe default
+}
+
+// VibeContextualTransformer applies context-aware transformations using comonads
+type VibeContextualTransformer struct {
+	logicGates map[string]*TernaryLogicGate
+	history    []*models.Vibe // Temporal context
+	maxHistory int
+}
+
+// NewVibeContextualTransformer creates a sophisticated vibe processor
+func NewVibeContextualTransformer(maxHistory int) *VibeContextualTransformer {
+	return &VibeContextualTransformer{
+		logicGates: map[string]*TernaryLogicGate{
+			"consensus": NewTernaryLogicGate("consensus"),
+			"amplify":   NewTernaryLogicGate("amplify"),
+			"inhibit":   NewTernaryLogicGate("inhibit"),
+		},
+		history:    make([]*models.Vibe, 0, maxHistory),
+		maxHistory: maxHistory,
+	}
+}
+
+// TransformWithContext applies comonadic transformations to vibes
+func (vct *VibeContextualTransformer) TransformWithContext(center *models.Vibe, neighbors []*models.Vibe) *models.Vibe {
+	// Create comonadic context
+	ctx := &ComonadicVibeContext{
+		center:    center,
+		neighbors: neighbors,
+		temporal:  append([]*models.Vibe{}, vct.history...), // Copy history
+		gradient:  vct.calculateGradient(center),
+		coherence: vct.calculateCoherence(center, neighbors),
+	}
+	
+	// Apply comonadic extension with context-aware transformation
+	transformed := ctx.Extend(func(c *ComonadicVibeContext) *models.Vibe {
+		return vct.contextAwareTransform(c)
+	})
+	
+	// Update history
+	vct.updateHistory(center)
+	
+	return transformed.Extract()
+}
+
+// calculateGradient determines the directional tendency of a vibe
+func (vct *VibeContextualTransformer) calculateGradient(vibe *models.Vibe) TernaryState {
+	if len(vct.history) < 2 {
+		return TernaryNeutral
+	}
+	
+	// Compare with recent history
+	recentEnergy := vct.history[len(vct.history)-1].Energy
+	if vibe.Energy > recentEnergy + 0.1 {
+		return TernaryPositive // Rising
+	} else if vibe.Energy < recentEnergy - 0.1 {
+		return TernaryNegative // Falling
+	}
+	return TernaryNeutral // Stable
+}
+
+// calculateCoherence measures how well the vibe fits with its context
+func (vct *VibeContextualTransformer) calculateCoherence(center *models.Vibe, neighbors []*models.Vibe) float64 {
+	if len(neighbors) == 0 {
+		return 1.0 // Perfect coherence in isolation
+	}
+	
+	// Calculate average neighbor energy
+	var totalEnergy float64
+	for _, neighbor := range neighbors {
+		if neighbor != nil {
+			totalEnergy += neighbor.Energy
+		}
+	}
+	avgEnergy := totalEnergy / float64(len(neighbors))
+	
+	// Coherence is inverse of energy difference
+	energy_diff := math.Abs(center.Energy - avgEnergy)
+	return math.Exp(-energy_diff) // Exponential decay with difference
+}
+
+// contextAwareTransform performs the actual transformation using context
+func (vct *VibeContextualTransformer) contextAwareTransform(ctx *ComonadicVibeContext) *models.Vibe {
+	vibe := *ctx.center // Copy
+	
+	// Apply different gates based on context
+	if ctx.coherence > 0.8 {
+		// High coherence: use consensus
+		for _, neighbor := range ctx.neighbors {
+			if neighbor != nil {
+				centerState := energyToTernary(vibe.Energy)
+				neighborState := energyToTernary(neighbor.Energy)
+				result := vct.logicGates["consensus"].Apply(centerState, neighborState)
+				vibe.Energy = ternaryToEnergy(result, vibe.Energy)
+				break // Only apply to first neighbor for simplicity
+			}
+		}
+	} else if ctx.gradient != TernaryNeutral {
+		// Trending: use amplification
+		centerState := energyToTernary(vibe.Energy)
+		result := vct.logicGates["amplify"].Apply(centerState, ctx.gradient)
+		vibe.Energy = ternaryToEnergy(result, vibe.Energy)
+	} else {
+		// Low coherence: use inhibition to dampen chaos
+		for _, neighbor := range ctx.neighbors {
+			if neighbor != nil {
+				centerState := energyToTernary(vibe.Energy)
+				neighborState := energyToTernary(neighbor.Energy)
+				result := vct.logicGates["inhibit"].Apply(centerState, neighborState)
+				vibe.Energy = ternaryToEnergy(result, vibe.Energy)
+				break
+			}
+		}
+	}
+	
+	return &vibe
+}
+
+// energyToTernary converts energy level to ternary state
+func energyToTernary(energy float64) TernaryState {
+	if energy < 0.33 {
+		return TernaryNegative
+	} else if energy > 0.66 {
+		return TernaryPositive
+	}
+	return TernaryNeutral
+}
+
+// ternaryToEnergy converts ternary state back to energy with smoothing
+func ternaryToEnergy(state TernaryState, currentEnergy float64) float64 {
+	var targetEnergy float64
+	
+	switch state {
+	case TernaryNegative:
+		targetEnergy = 0.2
+	case TernaryNeutral:
+		targetEnergy = 0.5
+	case TernaryPositive:
+		targetEnergy = 0.8
+	}
+	
+	// Smooth transition - don't jump directly to target
+	smoothing := 0.3
+	return currentEnergy*(1-smoothing) + targetEnergy*smoothing
+}
+
+// updateHistory maintains temporal context
+func (vct *VibeContextualTransformer) updateHistory(vibe *models.Vibe) {
+	vct.history = append(vct.history, vibe)
+	if len(vct.history) > vct.maxHistory {
+		// Remove oldest entry
+		vct.history = vct.history[1:]
+	}
+}

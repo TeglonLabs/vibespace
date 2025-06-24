@@ -1,0 +1,166 @@
+# Multi-Cluster Kind Configuration for Boltzmann Brain Test Scenarios
+# Based on research: distributed systems, chaos engineering, and concurrent workloads
+
+# Cluster 1: Primary Reality (High Coherence Environment)
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+metadata:
+  name: primary-reality
+spec:
+  nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=primary,coherence-level=high,boltzmann-world=alpha"
+    extraPortMappings:
+    - containerPort: 30001
+      hostPort: 30001
+      protocol: TCP
+    - containerPort: 30002  
+      hostPort: 30002
+      protocol: TCP
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=primary,coherence-level=high,boltzmann-world=alpha"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=primary,coherence-level=high,boltzmann-world=alpha"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=primary,coherence-level=high,boltzmann-world=alpha"
+
+---
+# Cluster 2: Quantum Fluctuation Reality (Medium Coherence)
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+metadata:
+  name: quantum-reality
+spec:
+  nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=quantum,coherence-level=medium,boltzmann-world=beta"
+    extraPortMappings:
+    - containerPort: 30003
+      hostPort: 30003
+      protocol: TCP
+    - containerPort: 30004
+      hostPort: 30004
+      protocol: TCP
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=quantum,coherence-level=medium,boltzmann-world=beta"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=quantum,coherence-level=medium,boltzmann-world=beta"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=quantum,coherence-level=medium,boltzmann-world=beta"
+
+---
+# Cluster 3: Chaotic Reality (Low Coherence, High Entropy)
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+metadata:
+  name: chaotic-reality
+spec:
+  nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=chaotic,coherence-level=low,boltzmann-world=gamma"
+    extraPortMappings:
+    - containerPort: 30005
+      hostPort: 30005
+      protocol: TCP
+    - containerPort: 30006
+      hostPort: 30006
+      protocol: TCP
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=chaotic,coherence-level=low,boltzmann-world=gamma"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=chaotic,coherence-level=low,boltzmann-world=gamma"
+
+---
+# Cluster 4: Meta-Observer Reality (Cross-Reality Monitoring)
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+metadata:
+  name: meta-observer
+spec:
+  nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+    - |
+      kind: InitConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=meta,coherence-level=observer,boltzmann-world=omega"
+    extraPortMappings:
+    - containerPort: 30007
+      hostPort: 30007
+      protocol: TCP
+    - containerPort: 30008
+      hostPort: 30008
+      protocol: TCP
+    - containerPort: 30009  # Additional port for multi-cluster observation
+      hostPort: 30009
+      protocol: TCP
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=meta,coherence-level=observer,boltzmann-world=omega"
+  - role: worker
+    kubeadmConfigPatches:
+    - |
+      kind: JoinConfiguration
+      nodeRegistration:
+        kubeletExtraArgs:
+          node-labels: "reality-type=meta,coherence-level=observer,boltzmann-world=omega"

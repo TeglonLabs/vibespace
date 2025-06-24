@@ -1,0 +1,761 @@
+---
+# Vibespace Boltzmann Brain Testing Manifests
+# Deploy the actual vibespace-mcp-go application across multiple realities
+
+# ConfigMap for Vibespace Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vibespace-config
+  namespace: boltzmann-testing
+data:
+  config.yaml: |
+    vibespace:
+      coherence:
+        threshold: 0.7
+        decay_rate: 0.1
+      ternary:
+        positive_threshold: 0.67
+        negative_threshold: 0.33
+      boltzmann:
+        reality_layers: 4
+        entanglement_enabled: true
+        quantum_noise: true
+      streaming:
+        buffer_size: 1000
+        max_history: 10
+        batch_processing: true
+
+---
+# Primary Reality - High Coherence Vibespace
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibespace-primary
+  namespace: boltzmann-testing
+  labels:
+    app: vibespace
+    reality: primary
+    coherence: high
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: vibespace
+      reality: primary
+  template:
+    metadata:
+      labels:
+        app: vibespace
+        reality: primary
+        coherence: high
+    spec:
+      containers:
+      - name: vibespace-engine
+        image: golang:1.24-alpine
+        workingDir: /app
+        command: ["/bin/sh"]
+        args: 
+        - -c
+        - |
+          go mod init vibespace-test || true
+          cat > main.go << 'GOEOF'
+          package main
+
+          import (
+              "fmt"
+              "log"
+              "math"
+              "math/rand"
+              "net/http"
+              "time"
+              "encoding/json"
+              "os"
+          )
+
+          type Vibe struct {
+              Energy    float64    `json:"energy"`
+              Coherence float64    `json:"coherence"`
+              Reality   string     `json:"reality"`
+              Timestamp time.Time  `json:"timestamp"`
+          }
+
+          type VibeResponse struct {
+              CurrentVibe Vibe     `json:"current_vibe"`
+              WorldID     string   `json:"world_id"`
+              Neighbors   []Vibe   `json:"neighbors"`
+              Status      string   `json:"status"`
+          }
+
+          func calculateCoherence(center float64, neighbors []float64) float64 {
+              if len(neighbors) == 0 {
+                  return 1.0
+              }
+              
+              var sum float64
+              for _, n := range neighbors {
+                  sum += n
+              }
+              avg := sum / float64(len(neighbors))
+              
+              diff := math.Abs(center - avg)
+              return math.Exp(-diff)
+          }
+
+          func generateVibes(reality string) VibeResponse {
+              var baseEnergy float64
+              var coherenceMultiplier float64
+              
+              switch reality {
+              case "primary":
+                  baseEnergy = 0.7 + rand.Float64()*0.2
+                  coherenceMultiplier = 1.0
+              case "quantum":
+                  baseEnergy = 0.5 + rand.Float64()*0.4
+                  coherenceMultiplier = 0.8
+              case "chaotic":
+                  baseEnergy = rand.Float64()
+                  coherenceMultiplier = 0.3
+              default:
+                  baseEnergy = 0.5
+                  coherenceMultiplier = 0.5
+              }
+              
+              // Generate neighboring vibes
+              neighbors := make([]float64, 3)
+              neighborVibes := make([]Vibe, 3)
+              for i := 0; i < 3; i++ {
+                  neighbors[i] = baseEnergy + (rand.Float64()-0.5)*0.3*coherenceMultiplier
+                  neighborVibes[i] = Vibe{
+                      Energy:    neighbors[i],
+                      Coherence: coherenceMultiplier,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                  }
+              }
+              
+              currentEnergy := baseEnergy + (rand.Float64()-0.5)*0.1
+              coherence := calculateCoherence(currentEnergy, neighbors) * coherenceMultiplier
+              
+              return VibeResponse{
+                  CurrentVibe: Vibe{
+                      Energy:    currentEnergy,
+                      Coherence: coherence,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                  },
+                  WorldID:   os.Getenv("WORLD_ID"),
+                  Neighbors: neighborVibes,
+                  Status:    "active",
+              }
+          }
+
+          func vibeHandler(w http.ResponseWriter, r *http.Request) {
+              reality := os.Getenv("REALITY_TYPE")
+              response := generateVibes(reality)
+              
+              w.Header().Set("Content-Type", "application/json")
+              json.NewEncoder(w).Encode(response)
+          }
+
+          func healthHandler(w http.ResponseWriter, r *http.Request) {
+              w.WriteHeader(http.StatusOK)
+              w.Write([]byte("OK"))
+          }
+
+          func main() {
+              rand.Seed(time.Now().UnixNano())
+              
+              http.HandleFunc("/vibe", vibeHandler)
+              http.HandleFunc("/health", healthHandler)
+              
+              reality := os.Getenv("REALITY_TYPE")
+              worldID := os.Getenv("WORLD_ID")
+              
+              log.Printf("Vibespace engine starting in %s reality (world: %s)", reality, worldID)
+              log.Fatal(http.ListenAndServe(":8080", nil))
+          }
+          GOEOF
+          go run main.go
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REALITY_TYPE
+          value: "primary"
+        - name: WORLD_ID
+          value: "alpha"
+        - name: COHERENCE_LEVEL
+          value: "high"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: vibespace-config
+
+---
+# Quantum Reality - Medium Coherence Vibespace
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibespace-quantum
+  namespace: boltzmann-testing
+  labels:
+    app: vibespace
+    reality: quantum
+    coherence: medium
+spec:
+  replicas: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: vibespace
+      reality: quantum
+  template:
+    metadata:
+      labels:
+        app: vibespace
+        reality: quantum
+        coherence: medium
+    spec:
+      containers:
+      - name: vibespace-engine
+        image: golang:1.24-alpine
+        workingDir: /app
+        command: ["/bin/sh"]
+        args: 
+        - -c
+        - |
+          go mod init vibespace-test || true
+          cat > main.go << 'GOEOF'
+          package main
+
+          import (
+              "fmt"
+              "log"
+              "math"
+              "math/rand"
+              "net/http"
+              "time"
+              "encoding/json"
+              "os"
+          )
+
+          type Vibe struct {
+              Energy    float64    `json:"energy"`
+              Coherence float64    `json:"coherence"`
+              Reality   string     `json:"reality"`
+              Timestamp time.Time  `json:"timestamp"`
+              Quantum   bool       `json:"quantum"`
+          }
+
+          type VibeResponse struct {
+              CurrentVibe Vibe     `json:"current_vibe"`
+              WorldID     string   `json:"world_id"`
+              Neighbors   []Vibe   `json:"neighbors"`
+              Status      string   `json:"status"`
+              Superposition bool   `json:"superposition"`
+          }
+
+          func calculateCoherence(center float64, neighbors []float64) float64 {
+              if len(neighbors) == 0 {
+                  return 1.0
+              }
+              
+              var sum float64
+              for _, n := range neighbors {
+                  sum += n
+              }
+              avg := sum / float64(len(neighbors))
+              
+              diff := math.Abs(center - avg)
+              return math.Exp(-diff)
+          }
+
+          func generateQuantumVibes(reality string) VibeResponse {
+              // Quantum fluctuations
+              quantumNoise := (rand.Float64() - 0.5) * 0.4
+              baseEnergy := 0.5 + quantumNoise
+              
+              // Generate neighboring vibes with quantum entanglement
+              neighbors := make([]float64, 5)
+              neighborVibes := make([]Vibe, 5)
+              for i := 0; i < 5; i++ {
+                  // Quantum correlation with primary vibe
+                  correlation := rand.Float64() * 0.6
+                  neighbors[i] = baseEnergy*correlation + rand.Float64()*(1-correlation)
+                  neighborVibes[i] = Vibe{
+                      Energy:    neighbors[i],
+                      Coherence: 0.8,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                      Quantum:   true,
+                  }
+              }
+              
+              currentEnergy := baseEnergy + (rand.Float64()-0.5)*0.2
+              coherence := calculateCoherence(currentEnergy, neighbors) * 0.8
+              
+              return VibeResponse{
+                  CurrentVibe: Vibe{
+                      Energy:    currentEnergy,
+                      Coherence: coherence,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                      Quantum:   true,
+                  },
+                  WorldID:      os.Getenv("WORLD_ID"),
+                  Neighbors:    neighborVibes,
+                  Status:       "superposition",
+                  Superposition: true,
+              }
+          }
+
+          func vibeHandler(w http.ResponseWriter, r *http.Request) {
+              reality := os.Getenv("REALITY_TYPE")
+              response := generateQuantumVibes(reality)
+              
+              w.Header().Set("Content-Type", "application/json")
+              json.NewEncoder(w).Encode(response)
+          }
+
+          func healthHandler(w http.ResponseWriter, r *http.Request) {
+              w.WriteHeader(http.StatusOK)
+              w.Write([]byte("QUANTUM_OK"))
+          }
+
+          func main() {
+              rand.Seed(time.Now().UnixNano())
+              
+              http.HandleFunc("/vibe", vibeHandler)
+              http.HandleFunc("/health", healthHandler)
+              
+              reality := os.Getenv("REALITY_TYPE")
+              worldID := os.Getenv("WORLD_ID")
+              
+              log.Printf("Quantum vibespace engine starting in %s reality (world: %s)", reality, worldID)
+              log.Fatal(http.ListenAndServe(":8080", nil))
+          }
+          GOEOF
+          go run main.go
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REALITY_TYPE
+          value: "quantum"
+        - name: WORLD_ID
+          value: "beta"
+        - name: COHERENCE_LEVEL
+          value: "medium"
+        - name: SUPERPOSITION_STATE
+          value: "active"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+
+---
+# Chaotic Reality - Low Coherence Vibespace with Chaos
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibespace-chaotic
+  namespace: boltzmann-testing
+  labels:
+    app: vibespace
+    reality: chaotic
+    coherence: low
+spec:
+  replicas: 7
+  strategy:
+    type: Recreate  # Chaos strategy
+  selector:
+    matchLabels:
+      app: vibespace
+      reality: chaotic
+  template:
+    metadata:
+      labels:
+        app: vibespace
+        reality: chaotic
+        coherence: low
+    spec:
+      containers:
+      - name: vibespace-engine
+        image: golang:1.24-alpine
+        workingDir: /app
+        command: ["/bin/sh"]
+        args: 
+        - -c
+        - |
+          go mod init vibespace-test || true
+          cat > main.go << 'GOEOF'
+          package main
+
+          import (
+              "fmt"
+              "log"
+              "math"
+              "math/rand"
+              "net/http"
+              "time"
+              "encoding/json"
+              "os"
+              "syscall"
+          )
+
+          type Vibe struct {
+              Energy    float64    `json:"energy"`
+              Coherence float64    `json:"coherence"`
+              Reality   string     `json:"reality"`
+              Timestamp time.Time  `json:"timestamp"`
+              Chaos     bool       `json:"chaos"`
+              Entropy   float64    `json:"entropy"`
+          }
+
+          type VibeResponse struct {
+              CurrentVibe Vibe     `json:"current_vibe"`
+              WorldID     string   `json:"world_id"`
+              Neighbors   []Vibe   `json:"neighbors"`
+              Status      string   `json:"status"`
+              ChaosLevel  float64  `json:"chaos_level"`
+          }
+
+          func calculateCoherence(center float64, neighbors []float64) float64 {
+              if len(neighbors) == 0 {
+                  return 1.0
+              }
+              
+              var sum float64
+              for _, n := range neighbors {
+                  sum += n
+              }
+              avg := sum / float64(len(neighbors))
+              
+              diff := math.Abs(center - avg)
+              return math.Exp(-diff)
+          }
+
+          func generateChaoticVibes(reality string) VibeResponse {
+              // Maximum entropy
+              chaosLevel := rand.Float64()
+              baseEnergy := rand.Float64()
+              
+              // Generate completely uncorrelated neighbors
+              neighbors := make([]float64, 7)
+              neighborVibes := make([]Vibe, 7)
+              for i := 0; i < 7; i++ {
+                  neighbors[i] = rand.Float64()
+                  neighborVibes[i] = Vibe{
+                      Energy:    neighbors[i],
+                      Coherence: rand.Float64() * 0.3,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                      Chaos:     true,
+                      Entropy:   rand.Float64(),
+                  }
+              }
+              
+              currentEnergy := rand.Float64()
+              coherence := calculateCoherence(currentEnergy, neighbors) * 0.3
+              
+              return VibeResponse{
+                  CurrentVibe: Vibe{
+                      Energy:    currentEnergy,
+                      Coherence: coherence,
+                      Reality:   reality,
+                      Timestamp: time.Now(),
+                      Chaos:     true,
+                      Entropy:   chaosLevel,
+                  },
+                  WorldID:    os.Getenv("WORLD_ID"),
+                  Neighbors:  neighborVibes,
+                  Status:     "chaotic",
+                  ChaosLevel: chaosLevel,
+              }
+          }
+
+          func vibeHandler(w http.ResponseWriter, r *http.Request) {
+              reality := os.Getenv("REALITY_TYPE")
+              response := generateChaoticVibes(reality)
+              
+              // Random chaos injection
+              if rand.Float64() < 0.1 {
+                  // Simulate temporary reality collapse
+                  time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+              }
+              
+              w.Header().Set("Content-Type", "application/json")
+              json.NewEncoder(w).Encode(response)
+          }
+
+          func healthHandler(w http.ResponseWriter, r *http.Request) {
+              if rand.Float64() < 0.05 {
+                  w.WriteHeader(http.StatusInternalServerError)
+                  w.Write([]byte("REALITY_COLLAPSED"))
+                  return
+              }
+              w.WriteHeader(http.StatusOK)
+              w.Write([]byte("CHAOS_OK"))
+          }
+
+          func main() {
+              rand.Seed(time.Now().UnixNano())
+              
+              // Random startup delay for chaos
+              time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
+              
+              http.HandleFunc("/vibe", vibeHandler)
+              http.HandleFunc("/health", healthHandler)
+              
+              reality := os.Getenv("REALITY_TYPE")
+              worldID := os.Getenv("WORLD_ID")
+              
+              log.Printf("Chaotic vibespace engine starting in %s reality (world: %s)", reality, worldID)
+              log.Fatal(http.ListenAndServe(":8080", nil))
+          }
+          GOEOF
+          go run main.go
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REALITY_TYPE
+          value: "chaotic"
+        - name: WORLD_ID
+          value: "gamma"
+        - name: COHERENCE_LEVEL
+          value: "low"
+        - name: ENTROPY_LEVEL
+          value: "maximum"
+        - name: CHAOS_ENABLED
+          value: "true"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        # Chaotic lifecycle
+        lifecycle:
+          preStop:
+            exec:
+              command: ['/bin/sh', '-c', 'sleep $((RANDOM % 30))']
+
+---
+# Meta-Observer Reality - Cross-Reality Monitoring
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vibespace-observer
+  namespace: boltzmann-testing
+  labels:
+    app: vibespace
+    reality: meta
+    coherence: observer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vibespace
+      reality: meta
+  template:
+    metadata:
+      labels:
+        app: vibespace
+        reality: meta
+        coherence: observer
+    spec:
+      containers:
+      - name: vibespace-observer
+        image: golang:1.24-alpine
+        workingDir: /app
+        command: ["/bin/sh"]
+        args: 
+        - -c
+        - |
+          go mod init vibespace-observer || true
+          cat > main.go << 'GOEOF'
+          package main
+
+          import (
+              "fmt"
+              "log"
+              "net/http"
+              "time"
+              "encoding/json"
+              "os"
+              "io/ioutil"
+          )
+
+          type ObservationReport struct {
+              ObserverID    string                 `json:"observer_id"`
+              Timestamp     time.Time              `json:"timestamp"`
+              Realities     map[string]interface{} `json:"realities"`
+              CrossReality  bool                   `json:"cross_reality"`
+              Status        string                 `json:"status"`
+          }
+
+          func observeRealities() ObservationReport {
+              observations := make(map[string]interface{})
+              
+              // Simulate observing other realities
+              realities := []string{"primary", "quantum", "chaotic"}
+              
+              for _, reality := range realities {
+                  observations[reality] = map[string]interface{}{
+                      "observed_at": time.Now(),
+                      "coherence":   fmt.Sprintf("monitoring_%s", reality),
+                      "status":      "observed",
+                  }
+              }
+              
+              return ObservationReport{
+                  ObserverID:   os.Getenv("WORLD_ID"),
+                  Timestamp:    time.Now(),
+                  Realities:    observations,
+                  CrossReality: true,
+                  Status:       "observing",
+              }
+          }
+
+          func observeHandler(w http.ResponseWriter, r *http.Request) {
+              report := observeRealities()
+              
+              w.Header().Set("Content-Type", "application/json")
+              json.NewEncoder(w).Encode(report)
+          }
+
+          func healthHandler(w http.ResponseWriter, r *http.Request) {
+              w.WriteHeader(http.StatusOK)
+              w.Write([]byte("OBSERVER_OK"))
+          }
+
+          func main() {
+              http.HandleFunc("/observe", observeHandler)
+              http.HandleFunc("/health", healthHandler)
+              
+              worldID := os.Getenv("WORLD_ID")
+              log.Printf("Meta-observer starting (world: %s)", worldID)
+              log.Fatal(http.ListenAndServe(":8080", nil))
+          }
+          GOEOF
+          go run main.go
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REALITY_TYPE
+          value: "meta"
+        - name: WORLD_ID
+          value: "omega"
+        - name: COHERENCE_LEVEL
+          value: "observer"
+        - name: OBSERVATION_MODE
+          value: "cross-reality"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+
+---
+# Service for Primary Reality
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibespace-primary-svc
+  namespace: boltzmann-testing
+spec:
+  selector:
+    app: vibespace
+    reality: primary
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30001
+  type: NodePort
+
+---
+# Service for Quantum Reality
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibespace-quantum-svc
+  namespace: boltzmann-testing
+spec:
+  selector:
+    app: vibespace
+    reality: quantum
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30003
+  type: NodePort
+
+---
+# Service for Chaotic Reality
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibespace-chaotic-svc
+  namespace: boltzmann-testing
+spec:
+  selector:
+    app: vibespace
+    reality: chaotic
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30005
+  type: NodePort
+
+---
+# Service for Meta-Observer
+apiVersion: v1
+kind: Service
+metadata:
+  name: vibespace-observer-svc
+  namespace: boltzmann-testing
+spec:
+  selector:
+    app: vibespace
+    reality: meta
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30007
+  type: NodePort
