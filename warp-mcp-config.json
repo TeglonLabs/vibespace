@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "vibespace-categorical": {
+      "command": "go",
+      "args": [
+        "run",
+        "cmd/server/main.go"
+      ],
+      "env": {
+        "VIBESPACE_MODE": "categorical",
+        "PREVIEW_ARTIFACTS": "true",
+        "COMONADIC_CONTEXT": "enabled"
+      }
+    }
+  }
+}

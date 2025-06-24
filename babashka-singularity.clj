@@ -118,19 +118,20 @@
 
 (def mcp-servers
   "The pantheon of verification deities"
-  {:ocaml {:port 3001 :type :functional :category :comonadic}
-   :babashka {:port 3002 :type :orchestration :category :transductive}
-   :tree-sitter {:port 3003 :type :parsing :category :structural}
-   :codex {:port 3004 :type :generation :category :creative}
-   :kuzu {:port 3005 :type :graph :category :relational}
-   :elevenlabs {:port 3006 :type :audio :category :sensory}
-   :web9 {:port 3007 :type :validation :category :cryptographic}})
+  {:ocaml {:host "nonlocal.info" :port 4222 :type :functional :category :comonadic}
+   :babashka {:host "nonlocal.info" :port 4223 :type :orchestration :category :transductive}
+   :tree-sitter {:host "nonlocal.info" :port 4224 :type :parsing :category :structural}
+   :codex {:host "nonlocal.info" :port 4225 :type :generation :category :creative}
+   :kuzu {:host "nonlocal.info" :port 4226 :type :graph :category :relational}
+   :elevenlabs {:host "nonlocal.info" :port 4227 :type :audio :category :sensory}
+   :web9 {:host "nonlocal.info" :port 4228 :type :validation :category :cryptographic}})
 
 (defn mcp-call
   "Invoke an MCP server with categorical awareness"
   [server-key method params & {:keys [timeout-ms] :or {timeout-ms 5000}}]
   (let [server (get mcp-servers server-key)
-        url (str "http://localhost:" (:port server) "/mcp")
+        host (or (:host server) "localhost")
+        url (str "http://" host ":" (:port server) "/mcp")
         payload {:jsonrpc "2.0"
                  :id (str (random-uuid))
                  :method method
@@ -142,7 +143,7 @@
         (when (= 200 (:status response))
           (json/parse-string (:body response) true)))
       (catch Exception e
-        {:error {:message (.getMessage e) :server server-key :method method}}))))
+        {:error {:message (str e) :server server-key :method method}}))))
 
 (defn compose-mcp-morphisms
   "Compose MCP server calls as categorical morphisms"

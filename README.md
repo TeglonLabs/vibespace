@@ -2,6 +2,14 @@
 
 An MCP (Model Context Protocol) experience implementation for managing vibes and worlds with real-time NATS streaming.
 
+## What Makes This Special
+
+- **🧮 Categorical Universe Artifacts**: First-class support for comonadic contexts and ternary logic
+- **🎯 Interactive Previews**: WrapPreview-compatible artifacts for live exploration
+- **⚡ Real-time Streaming**: NATS-powered world moment streaming
+- **🔧 Production Ready**: Comprehensive testing, CI/CD, and observability
+- **🌊 Transductive Chains**: Context-aware transformations with verification traces
+
 ## Overview
 
 vibespace MCP Experience is a Go implementation of a Model Context Protocol experience that provides resources and tools for managing "vibes" (emotional atmospheres) and "worlds" (physical or virtual spaces). The server uses custom URI schemes (`vibe://` and `world://`) to access resources and supports JSON-RPC methods for communication.
@@ -29,12 +37,91 @@ vibespace MCP Experience is a Go implementation of a Model Context Protocol expe
 - **Server**: MCP protocol implementation with JSON-RPC methods
 - **Streaming**: NATS integration for real-time streaming of world moments with Stream ID support
 
-## Installation
+## 🚀 Quick Start
 
-You can add this package to your Go project using:
+### Option 1: Download Pre-built Binary (Recommended)
+
+```bash
+# Download latest release
+wget https://github.com/bmorphism/vibespace-mcp-go/releases/latest/download/vibespace-mcp-linux-amd64.tar.gz
+tar -xzf vibespace-mcp-linux-amd64.tar.gz
+chmod +x vibespace-mcp-linux-amd64
+
+# Run the server
+./vibespace-mcp-linux-amd64
+```
+
+### Option 2: Using Docker
+
+```bash
+docker run -p 8080:8080 ghcr.io/bmorphism/vibespace-mcp-go:latest
+```
+
+### Option 3: Build from Source
 
 ```bash
 go get github.com/bmorphism/vibespace-mcp-go
+go build -o vibespace-mcp ./cmd/server
+./vibespace-mcp
+```
+
+## 🎯 MCP Client Integration
+
+### Warp Terminal (Recommended)
+
+1. **Install Warp Preview**: [Download here](https://www.warp.dev/download-preview)
+2. **Add MCP Server**: 
+   - Open Warp Drive → Personal → MCP Servers
+   - Click "+ Add" → CLI Server
+   - Name: `vibespace-categorical`
+   - Command: `go run cmd/server/main.go`
+   - Environment:
+     ```
+     VIBESPACE_MODE=categorical
+     PREVIEW_ARTIFACTS=true
+     COMONADIC_CONTEXT=enabled
+     ```
+3. **Test Integration**:
+   ```bash
+   @categorical_extract contextId="test-workspace"
+   @ternary_logic_gate gateType="consensus" inputA=1 inputB=1
+   ```
+
+### Claude Desktop
+
+Add to your `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "vibespace-categorical": {
+      "command": "./vibespace-mcp-server",
+      "env": {
+        "VIBESPACE_MODE": "categorical",
+        "PREVIEW_ARTIFACTS": "true"
+      }
+    }
+  }
+}
+```
+
+### VS Code with Continue
+
+```yaml
+# config.yaml
+mcp:
+  vibespace:
+    command: ["./vibespace-mcp-server"]
+    env:
+      VIBESPACE_MODE: categorical
+      PREVIEW_ARTIFACTS: "true"
+```
+
+### Using MCP Inspector (Development)
+
+```bash
+npx @modelcontextprotocol/inspector ./vibespace-mcp-server
+# Opens browser at http://localhost:5173
 ```
 
 ## Running the Server
@@ -93,6 +180,36 @@ See [TESTING.md](./TESTING.md) for detailed information about the testing approa
 - **Integration Tests**: End-to-end tests combining multiple operations
 - **Method Tests**: JSON-RPC method discovery and compatibility
 
+## 🧮 Categorical Tools (New!)
+
+The server now includes specialized tools for categorical universe exploration:
+
+### Comonadic Operations
+- **`categorical_extract`**: Extract focused values from comonadic contexts
+- **`categorical_duplicate`**: Create navigable context-of-contexts
+- **`categorical_extend`**: Apply context-aware transformations
+
+### Ternary Logic Gates
+- **`ternary_logic_gate`**: Execute consensus/amplify/inhibit operations
+- Interactive truth tables and state visualizations
+- Real-time WrapPreview artifact generation
+
+### Example Usage
+
+```bash
+# Extract a focused vibe from context
+@categorical_extract contextId="workspace-flow"
+
+# Create navigable context tree
+@categorical_duplicate contextId="workspace-flow"
+
+# Apply consensus transformation
+@categorical_extend contextId="workspace-flow" transformation="consensus"
+
+# Execute ternary logic gate
+@ternary_logic_gate gateType="consensus" inputA=1 inputB=1
+```
+
 ## MCP Protocol
 
 The server implements the Model Context Protocol providing:
@@ -102,6 +219,7 @@ The server implements the Model Context Protocol providing:
   - **Vibe Tools**: `create_vibe`, `update_vibe`, `delete_vibe`
   - **World Tools**: `create_world`, `update_world`, `delete_world`, `set_world_vibe`
   - **Streaming Tools**: `streaming_startStreaming`, `streaming_stopStreaming`, `streaming_status`, `streaming_streamWorld`, `streaming_updateConfig`
+  - **Categorical Tools**: `categorical_extract`, `categorical_duplicate`, `categorical_extend`, `ternary_logic_gate`
 
 For more details on the streaming capabilities, see [STREAMING.md](./STREAMING.md).
 

@@ -50,6 +50,10 @@ func main() {
 
 	// Create mcp server
 	mcpServer := server.NewMCPServer("vibespace-mcp", "1.0.0")
+	
+	// Create categorical tools for WrapPreview integration
+	categoricalTools := rpcmethods.NewCategoricalTools()
+	rpcmethods.RegisterCategoricalTools(mcpServer, categoricalTools)
 
 	// Get the streaming tool methods and register them
 	fmt.Println("Registering streaming tools:")

@@ -562,6 +562,11 @@ func (cvc *ComonadicVibeContext) Duplicate() *ComonadicVibeContext {
 	}
 }
 
+// Neighbors returns the neighbor vibes in the context
+func (cvc *ComonadicVibeContext) Neighbors() []*models.Vibe {
+	return cvc.neighbors
+}
+
 // Extend implements comonadic extension - apply context-aware transformation
 func (cvc *ComonadicVibeContext) Extend(f func(*ComonadicVibeContext) *models.Vibe) *ComonadicVibeContext {
 	newCenter := f(cvc)
