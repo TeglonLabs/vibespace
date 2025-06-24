@@ -224,31 +224,31 @@ spec:
 
 ;; Chaos engineering experiments using comonadic extension
 (defn inject-reality-chaos [reality-ctx]
-  (extend (fn [ctx]
-            (let [{:keys [coherence-level name]} ctx
-                  cluster-name (str (clojure.core/name name) "-reality")]
-              (println (str "🌪️  Injecting chaos into " cluster-name))
-              
-              ;; Reality-specific chaos patterns
-              (case coherence-level
-                :high (do
-                        (println "   → Testing resilience of stable consciousness")
-                        (shell/sh "kubectl" "rollout" "restart" (str "deployment/vibespace-" (clojure.core/name name)) "-n" "boltzmann-testing"))
-                :medium (do
-                          (println "   → Inducing mesoscale causal disruption")
-                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=2" "-n" "boltzmann-testing")
-                          (Thread/sleep 5000)
-                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=5" "-n" "boltzmann-testing"))
-                :cheeky (do
-                          (println "   → Testing apescale pattern emergence")
-                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=1" "-n" "boltzmann-testing")
-                          (Thread/sleep 3000)
-                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=7" "-n" "boltzmann-testing"))
-                :observer (do
-                            (println "   → Testing observer effect")
-                            (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=4" "-n" "boltzmann-testing")))
-              :chaos-injected))
-          reality-ctx))
+  (let [{:keys [coherence-level name]} reality-ctx
+        cluster-name (str (clojure.core/name name) "-reality")]
+    (println (str "🌪️  Injecting chaos into " cluster-name))
+    
+    ;; Reality-specific chaos patterns
+    (case coherence-level
+      :high (do
+              (println "   → Testing resilience of stable consciousness")
+              (shell/sh "kubectl" "rollout" "restart" (str "deployment/vibespace-" (clojure.core/name name)) "-n" "boltzmann-testing"))
+      :medium (do
+                (println "   → Inducing mesoscale causal disruption")
+                (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=2" "-n" "boltzmann-testing")
+                (Thread/sleep 5000)
+                (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=5" "-n" "boltzmann-testing"))
+      :cheeky (do
+                (println "   → Testing apescale pattern emergence")
+                (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=1" "-n" "boltzmann-testing")
+                (Thread/sleep 3000)
+                (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=7" "-n" "boltzmann-testing"))
+      :observer (do
+                  (println "   → Testing observer effect")
+                  (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=4" "-n" "boltzmann-testing")))
+    
+    ;; Return the modified context with chaos-injected status
+    (assoc reality-ctx :focus :chaos-injected)))
 
 ;; Monitor reality health using comonadic extract
 (defn monitor-reality-health [reality-ctx]
