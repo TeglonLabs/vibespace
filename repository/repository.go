@@ -48,6 +48,9 @@ type Repository struct {
 	mu     sync.RWMutex
 }
 
+// Ensure Repository implements VibeWorldRepository interface
+var _ VibeWorldRepository = (*Repository)(nil)
+
 // NewRepository creates a new repository with sample data
 func NewRepository() *Repository {
 	return NewRepositoryWithSampleData(true)

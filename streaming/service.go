@@ -156,6 +156,10 @@ func (s *StreamingService) streamMoments() {
 		select {
 		case <-ticker.C:
 			// Generate and publish moments for all worlds
+			if s.momentGenerator == nil {
+				fmt.Printf("Error: momentGenerator is nil in streamMoments\n")
+				continue
+			}
 			moments, err := s.momentGenerator.GenerateAllMoments()
 			if err != nil {
 				fmt.Printf("Error generating moments: %v\n", err)
@@ -258,8 +262,9 @@ func (s *StreamingService) PublishVibeUpdate(worldID string, vibe *models.Vibe) 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Make sure we're connected to NATS
+	// Check if we're connected to NATS first
 	if !s.natsClient.IsConnected() {
+		// Try to connect, but if it fails, return the error immediately
 		if err := s.natsClient.Connect(); err != nil {
 			return fmt.Errorf("failed to connect to NATS: %w", err)
 		}

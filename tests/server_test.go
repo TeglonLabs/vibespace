@@ -199,13 +199,14 @@ func setupTestVibeTools(s *server.MCPServer, repo *repository.Repository) {
 	createVibe := mcp.NewTool("create_vibe", WithDescription("Create a new vibe with the specified properties"))
 
 	s.AddTool(createVibe, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
-		name := req.Params.Arguments["name"].(string)
-		description := req.Params.Arguments["description"].(string)
-		energy := req.Params.Arguments["energy"].(float64)
-		mood := req.Params.Arguments["mood"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
+		name := args["name"].(string)
+		description := args["description"].(string)
+		energy := args["energy"].(float64)
+		mood := args["mood"].(string)
 		
-		colorsInterface := req.Params.Arguments["colors"].([]interface{})
+		colorsInterface := args["colors"].([]interface{})
 		colors := make([]string, len(colorsInterface))
 		for i, c := range colorsInterface {
 			colors[i] = c.(string)
@@ -232,7 +233,8 @@ func setupTestVibeTools(s *server.MCPServer, repo *repository.Repository) {
 	deleteVibe := mcp.NewTool("delete_vibe", WithDescription("Delete a vibe by ID"))
 	
 	s.AddTool(deleteVibe, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
 		err := repo.DeleteVibe(id)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -245,7 +247,8 @@ func setupTestVibeTools(s *server.MCPServer, repo *repository.Repository) {
 	updateVibe := mcp.NewTool("update_vibe", WithDescription("Update an existing vibe's properties"))
 	
 	s.AddTool(updateVibe, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
 		
 		// Get existing vibe
 		vibe, err := repo.GetVibe(id)
@@ -254,16 +257,16 @@ func setupTestVibeTools(s *server.MCPServer, repo *repository.Repository) {
 		}
 		
 		// Update fields if provided
-		if name, ok := req.Params.Arguments["name"].(string); ok {
+		if name, ok := args["name"].(string); ok {
 			vibe.Name = name
 		}
-		if description, ok := req.Params.Arguments["description"].(string); ok {
+		if description, ok := args["description"].(string); ok {
 			vibe.Description = description
 		}
-		if energy, ok := req.Params.Arguments["energy"].(float64); ok {
+		if energy, ok := args["energy"].(float64); ok {
 			vibe.Energy = energy
 		}
-		if mood, ok := req.Params.Arguments["mood"].(string); ok {
+		if mood, ok := args["mood"].(string); ok {
 			vibe.Mood = mood
 		}
 		
@@ -281,10 +284,11 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 	createWorld := mcp.NewTool("create_world", WithDescription("Create a new world with the specified properties"))
 	
 	s.AddTool(createWorld, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
-		name := req.Params.Arguments["name"].(string)
-		description := req.Params.Arguments["description"].(string)
-		typeStr := req.Params.Arguments["type"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
+		name := args["name"].(string)
+		description := args["description"].(string)
+		typeStr := args["type"].(string)
 		
 		world := models.World{
 			ID:          id,
@@ -293,7 +297,7 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 			Type:        models.WorldType(typeStr),
 		}
 		
-		if vibeID, ok := req.Params.Arguments["currentVibe"].(string); ok {
+		if vibeID, ok := args["currentVibe"].(string); ok {
 			world.CurrentVibe = vibeID
 		}
 		
@@ -309,8 +313,9 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 	setWorldVibe := mcp.NewTool("set_world_vibe", WithDescription("Set a world's vibe"))
 	
 	s.AddTool(setWorldVibe, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		worldID := req.Params.Arguments["worldId"].(string)
-		vibeID := req.Params.Arguments["vibeId"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		worldID := args["worldId"].(string)
+		vibeID := args["vibeId"].(string)
 		
 		err := repo.SetWorldVibe(worldID, vibeID)
 		if err != nil {
@@ -324,20 +329,21 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 	updateWorld := mcp.NewTool("update_world", WithDescription("Update an existing world's properties"))
 	
 	s.AddTool(updateWorld, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
 		
 		world, err := repo.GetWorld(id)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 		
-		if name, ok := req.Params.Arguments["name"].(string); ok {
+		if name, ok := args["name"].(string); ok {
 			world.Name = name
 		}
-		if description, ok := req.Params.Arguments["description"].(string); ok {
+		if description, ok := args["description"].(string); ok {
 			world.Description = description
 		}
-		if location, ok := req.Params.Arguments["location"].(string); ok {
+		if location, ok := args["location"].(string); ok {
 			world.Location = location
 		}
 		
@@ -353,7 +359,8 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 	deleteWorld := mcp.NewTool("delete_world", WithDescription("Delete a world by ID"))
 	
 	s.AddTool(deleteWorld, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		id := req.Params.Arguments["id"].(string)
+		args := req.Params.Arguments.(map[string]interface{})
+		id := args["id"].(string)
 		
 		err := repo.DeleteWorld(id)
 		if err != nil {

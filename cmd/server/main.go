@@ -19,7 +19,7 @@ const (
 
 func main() {
 	// Create a repository
-	repo := repository.NewInMemoryRepository()
+	repo := repository.NewRepository()
 
 	// Add some initial vibes
 	addInitialVibes(repo)
@@ -31,6 +31,7 @@ func main() {
 	streamingConfig := &streaming.StreamingConfig{
 		NATSHost:       "nonlocal.info",
 		NATSPort:       4222,
+		NATSUrl:        "nats://nonlocal.info:4222",
 		StreamID:       "preworm",
 		StreamInterval: 5 * time.Second,
 		AutoStart:      false,
@@ -40,7 +41,7 @@ func main() {
 	streamingService := streaming.NewStreamingService(repo, streamingConfig)
 
 	// Set up streaming tools
-	streamingTools := streaming.NewStreamingTools(streamingService, streamingConfig)
+	streamingTools := streaming.NewStreamingTools(streamingService)
 
 	// Configure MCP server
 	server := &http.Server{
@@ -58,9 +59,9 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func addInitialVibes(repo repository.Repository) {
+func addInitialVibes(repo *repository.Repository) {
 	// Add some pre-configured vibes
-	vibes := []*models.Vibe{
+	vibes := []models.Vibe{
 		{
 			ID:          "calm",
 			Name:        "Calm",
@@ -114,16 +115,16 @@ func addInitialVibes(repo repository.Repository) {
 	}
 
 	for _, vibe := range vibes {
-		_, err := repo.CreateVibe(vibe)
+		err := repo.AddVibe(vibe)
 		if err != nil {
 			fmt.Printf("Error creating vibe %s: %v\n", vibe.Name, err)
 		}
 	}
 }
 
-func addInitialWorlds(repo repository.Repository) {
+func addInitialWorlds(repo *repository.Repository) {
 	// Add some pre-configured worlds
-	worlds := []*models.World{
+	worlds := []models.World{
 		{
 			ID:          "office",
 			Name:        "Office Space",
@@ -181,7 +182,7 @@ func addInitialWorlds(repo repository.Repository) {
 	}
 
 	for _, world := range worlds {
-		_, err := repo.CreateWorld(world)
+		err := repo.AddWorld(world)
 		if err != nil {
 			fmt.Printf("Error creating world %s: %v\n", world.Name, err)
 		}
