@@ -23,9 +23,22 @@ echo "🧠 Quantum consciousness fluctuations across probability manifolds"
 echo ""
 
 # Configuration
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" [38;2;207;207;207m&&[0m pwd)"
 readonly CONFIG_FILE="${SCRIPT_DIR}/kind-multicluster-boltzmann.yaml"
 readonly NAMESPACE="boltzmann-testing"
+
+# Configure container runtime (Podman support)
+export KIND_EXPERIMENTAL_PROVIDER=${KIND_EXPERIMENTAL_PROVIDER:-podman}
+export PATH="$HOME/bin:$PATH"
+
+# Detect container runtime
+if command -v podman [38;2;207;207;207m>[0m /dev/null [38;2;207;207;207m&&[0m [[ "$KIND_EXPERIMENTAL_PROVIDER" == "podman" ]]; then
+    readonly CONTAINER_CMD="podman"
+    log "Using Podman as container runtime"
+else
+    readonly CONTAINER_CMD="docker"
+    log "Using Docker as container runtime"
+fi
 
 # Cluster definitions
 declare -A CLUSTERS=(
@@ -66,21 +79,39 @@ quantum_log() {
 
 check_dependencies() {
     log "Checking dependencies..."
-    local deps=("kind" "kubectl" "docker" "jq")
+    local deps=("kind" "kubectl" "jq")
+    
+    # Check if we have either podman or docker
+    if command -v podman [38;2;207;207;207m>[0m /dev/null; then
+        deps+=("podman")
+    elif command -v docker [38;2;207;207;207m>[0m /dev/null; then
+        deps+=("docker")
+    else
+        error "Neither podman nor docker is installed"
+        exit 1
+    fi
     
     for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &> /dev/null; then
+        if ! command -v "$dep" [38;2;207;207;207m&>[0m /dev/null; then
             error "$dep is not installed"
             exit 1
         fi
     done
     
-    if ! docker info &> /dev/null; then
-        error "Docker is not running"
-        exit 1
+    # Check container runtime is working
+    if [[ "$CONTAINER_CMD" == "podman" ]]; then
+        if ! podman info [38;2;207;207;207m&>[0m /dev/null; then
+            error "Podman is not running or not configured properly"
+            exit 1
+        fi
+    else
+        if ! docker info [38;2;207;207;207m&>[0m /dev/null; then
+            error "Docker is not running"
+            exit 1
+        fi
     fi
     
-    log "✅ All dependencies are available"
+    log "✅ All dependencies are available (using $CONTAINER_CMD)"
 }
 
 create_clusters() {
