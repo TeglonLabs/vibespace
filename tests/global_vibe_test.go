@@ -11,7 +11,7 @@ import (
 
 // TestGlobalVibe tests creating and applying a global vibe across multiple worlds
 func TestGlobalVibe(t *testing.T) {
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Create a global vibe

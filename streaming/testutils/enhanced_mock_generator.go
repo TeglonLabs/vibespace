@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"sync"
 	"time"
 
 	"github.com/bmorphism/vibespace-mcp-go/models"
@@ -9,6 +10,7 @@ import (
 
 // EnhancedMockMomentGenerator extends MockMomentGenerator with error scenarios support
 type EnhancedMockMomentGenerator struct {
+	mu            sync.Mutex // Protect against race conditions
 	repo          *mocks.MockRepository
 	GenerateError error
 }
@@ -22,6 +24,9 @@ func NewEnhancedMockMomentGenerator(repo *mocks.MockRepository) *EnhancedMockMom
 
 // GenerateMoment generates a test moment or returns error
 func (g *EnhancedMockMomentGenerator) GenerateMoment(worldID string) (*models.WorldMoment, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	if g.GenerateError != nil {
 		return nil, g.GenerateError
 	}
@@ -36,6 +41,9 @@ func (g *EnhancedMockMomentGenerator) GenerateMoment(worldID string) (*models.Wo
 
 // GenerateAllMoments generates test moments or returns error
 func (g *EnhancedMockMomentGenerator) GenerateAllMoments() ([]*models.WorldMoment, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	if g.GenerateError != nil {
 		return nil, g.GenerateError
 	}
@@ -52,4 +60,11 @@ func (g *EnhancedMockMomentGenerator) GenerateAllMoments() ([]*models.WorldMomen
 	}
 	
 	return moments, nil
+}
+
+// SetGenerateError safely sets the generate error
+func (g *EnhancedMockMomentGenerator) SetGenerateError(err error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.GenerateError = err
 }

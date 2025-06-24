@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"context"
+	"math"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -263,17 +264,20 @@ func ConvertToOptimized(vibe *models.Vibe) *HardwareOptimizedVibe {
 	return opt
 }
 
-// computeChecksum calculates a hardware-accelerated checksum where available
+// computeChecksum calculates a safe checksum without unsafe pointer operations
 func (hv *HardwareOptimizedVibe) computeChecksum() {
-	// For TinyGo, we use a simple XOR-based checksum
-	// On full Go with cgo, this could use hardware CRC32
+	// Use a safe approach that doesn't rely on unsafe pointer operations
+	// to avoid memory alignment issues and potential crashes
 	var sum uint32
 	
-	// XOR all 32-bit words
-	words := (*[16]uint32)(unsafe.Pointer(hv))
-	for i := 0; i < 15; i++ { // Exclude checksum field itself
-		sum ^= words[i]
+	// Hash the individual fields safely
+	for _, b := range hv.ID {
+		sum ^= uint32(b)
 	}
+	sum ^= math.Float32bits(hv.Energy)
+	sum ^= math.Float32bits(hv.Temperature)
+	sum ^= math.Float32bits(hv.Humidity)
+	sum ^= math.Float32bits(hv.Light)
 	
 	hv.Checksum = sum
 }

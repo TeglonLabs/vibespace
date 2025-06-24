@@ -1,42 +1,246 @@
-linters:
-  enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - gofmt
-    - goimports
-    - gosec
-    - misspell
-    - prealloc
-    - revive
-    - stylecheck
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/bmorphism/vibespace-mcp-go
-
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
+# golangci-lint configuration for production-grade Go code
+# https://golangci-lint.run/usage/configuration/
 
 run:
-  timeout: 5m
+  timeout: 10m
   tests: true
   skip-dirs:
     - bin
+    - dist
     - examples
+    - .git
+    - .github
   skip-files:
     - ".*\\.pb\\.go$"
+    - ".*_gen\\.go$"
+    - ".*_generated\\.go$"
+    - ".*_mock\\.go$"
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  go: '1.24'
 
 output:
   format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters:
+  enable:
+    # Core linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis
+    - unused        # Find unused code
+    
+    # Formatting
+    - gofmt         # Format code
+    - goimports     # Manage imports
+    - gofumpt       # Stricter gofmt
+    
+    # Security
+    - gosec         # Security issues
+    
+    # Code quality
+    - misspell      # Spelling mistakes
+    - prealloc      # Slice preallocation
+    - revive        # Replacement for golint
+    - stylecheck    # Style issues
+    - unconvert     # Unnecessary type conversions
+    - unparam       # Unused function parameters
+    - whitespace    # Whitespace issues
+    
+    # Complexity
+    - cyclop        # Cyclomatic complexity
+    - gocyclo       # Cyclomatic complexity
+    - nestif        # Nested if statements
+    
+    # Performance
+    - bodyclose     # HTTP response body close
+    - noctx         # Context usage
+    
+    # Bug prone patterns
+    - exhaustive    # Exhaustive switch statements
+    - exportloopref # Loop variable capturing
+    - gocritic      # Comprehensive checks
+    - nilnil        # Nil-nil comparisons
+    - nilerr        # Nil error checks
+    - rowserrcheck  # SQL rows.Err() checks
+    - sqlclosecheck # SQL close checks
+    
+    # Documentation
+    - godot         # Comment periods
+    - misspell      # Spelling in comments
+    
+    # Modern Go practices
+    - gci           # Import organization
+    - goheader      # File headers
+    - gomodguard    # Module dependencies
+    - goprintffuncname # Printf function names
+    
+    # Test quality
+    - testpackage   # Test package naming
+    - thelper       # Test helpers
+    - tparallel     # Parallel tests
+  
+  disable:
+    # Disabled due to false positives or conflicts
+    - deadcode      # Deprecated, use unused instead
+    - varcheck      # Deprecated, use unused instead
+    - structcheck   # Deprecated, use unused instead
+    - interfacer    # Deprecated
+    - maligned      # Deprecated
+    - scopelint     # Deprecated, use exportloopref
+    - golint        # Deprecated, use revive
+    
+    # Disabled for test files or specific use cases
+    - funlen        # Function length (can be too strict)
+    - lll           # Line length (handled by gofumpt)
+    - dupl          # Code duplication (can be noisy)
+    - gomnd         # Magic numbers (too strict for tests)
+    - wsl           # Whitespace (conflicts with gofumpt)
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/bmorphism/vibespace-mcp-go
+    
+  gofumpt:
+    module-path: github.com/bmorphism/vibespace-mcp-go
+    extra-rules: true
+    
+  gci:
+    local-prefixes: github.com/bmorphism/vibespace-mcp-go
+    
+  cyclop:
+    max-complexity: 15
+    package-average: 10.0
+    skip-tests: true
+    
+  gocyclo:
+    min-complexity: 15
+    
+  nestif:
+    min-complexity: 5
+    
+  govet:
+    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment  # Can be too strict
+      
+  staticcheck:
+    go: "1.24"
+    checks: ["all"]
+    
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104  # Audit errors not checked (handled by errcheck)
+      - G204  # Subprocess launched with variable (too strict)
+      
+  revive:
+    rules:
+      - name: exported
+        arguments: ["checkPrivateReceivers", "sayRepetitiveInsteadOfStutters"]
+      - name: var-naming
+      - name: package-comments
+      - name: unexported-return
+      - name: time-naming
+      - name: context-as-argument
+      - name: context-keys-type
+      
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stdout)
+      
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport      # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain    # Can be too strict
+      - octalLiteral   # Not needed in modern Go
+      - whyNoLint     # Can be noisy
+      
+  exhaustive:
+    default-signifies-exhaustive: true
+    
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+    
+  testpackage:
+    skip-regexp: '(export|internal)_test\.go'
+    
+  gomodguard:
+    blocked:
+      modules:
+        - github.com/pkg/errors:
+            recommendations:
+              - errors
+              - fmt
+            reason: "Use standard library errors or fmt.Errorf"
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false
+  
+  exclude-rules:
+    # Disable certain linters for test files
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+        - dupl
+        - funlen
+        - goconst
+        - gocyclo
+        - cyclop
+        - maintidx
+        
+    # Disable line length for generated files
+    - path: \.pb\.go
+      linters:
+        - lll
+        
+    # Disable certain checks for main functions
+    - path: cmd/
+      text: "don't use underscores in Go names"
+      linters:
+        - revive
+        
+    # Allow long lines in examples
+    - path: examples/
+      linters:
+        - lll
+        
+    # Exclude certain issues by text
+    - text: "Use of weak random number generator"
+      linters:
+        - gosec
+      path: _test\.go
+      
+    - text: "Subprocess launched with.*"
+      linters:
+        - gosec
+      path: _test\.go
+      
+  exclude-use-default: false
+  exclude:
+    # Exclude common false positives
+    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
+    - "exported .* should have comment or be unexported"
+    - "should have a package comment, unless it's in another file for this package"

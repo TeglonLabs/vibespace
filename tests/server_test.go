@@ -58,8 +58,8 @@ func registerJSONRPCHandlers(s interface{}) {
 	// when we have a way to register custom JSON-RPC handlers
 }
 
-// setupTestServer creates a test server with the repository
-func setupTestServer() (*server.MCPServer, *repository.Repository) {
+// setupBasicTestServer creates a test server with the repository
+func setupBasicTestServer() (*server.MCPServer, *repository.Repository) {
 	// Use empty repository without sample data for tests
 	repo := repository.NewRepositoryWithSampleData(false)
 	s := server.NewMCPServer("vibespace-test", "1.0.0")
@@ -373,7 +373,7 @@ func setupTestWorldTools(s *server.MCPServer, repo *repository.Repository) {
 
 // Test resource listing
 func TestResourceList(t *testing.T) {
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 	
 	// JSON-RPC compatibility issue resolved with custom implementation
@@ -425,7 +425,7 @@ func TestResourceList(t *testing.T) {
 
 // Test getting resources by ID
 func TestResourceById(t *testing.T) {
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 	
 	// JSON-RPC compatibility issue resolved with custom implementation

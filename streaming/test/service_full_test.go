@@ -1,6 +1,7 @@
 package test
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 // MockMomentGenerator for service testing
 type ExtendedMockGenerator struct {
+	mu                  sync.Mutex // Protect against race conditions
 	GenerateError       error
 	GenerateAllError    error
 	GeneratedMoments    []*models.WorldMoment
@@ -26,6 +28,9 @@ func NewExtendedMockGenerator() *ExtendedMockGenerator {
 }
 
 func (g *ExtendedMockGenerator) GenerateMoment(worldID string) (*models.WorldMoment, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	if g.GenerateError != nil {
 		return nil, g.GenerateError
 	}
@@ -39,6 +44,9 @@ func (g *ExtendedMockGenerator) GenerateMoment(worldID string) (*models.WorldMom
 }
 
 func (g *ExtendedMockGenerator) GenerateAllMoments() ([]*models.WorldMoment, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
 	if g.GenerateAllError != nil {
 		return nil, g.GenerateAllError
 	}
@@ -55,6 +63,20 @@ func (g *ExtendedMockGenerator) GenerateAllMoments() ([]*models.WorldMoment, err
 	}
 	g.GeneratedAllMoments = append(g.GeneratedAllMoments, moments)
 	return moments, nil
+}
+
+// GetGeneratedMomentsCount returns the number of generated moments safely
+func (g *ExtendedMockGenerator) GetGeneratedMomentsCount() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return len(g.GeneratedMoments)
+}
+
+// GetGeneratedAllMomentsCount returns the number of generated all moments safely
+func (g *ExtendedMockGenerator) GetGeneratedAllMomentsCount() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return len(g.GeneratedAllMoments)
 }
 
 // TestStreamingServiceStartWithError tests the service Start method with error
@@ -160,7 +182,7 @@ func TestStreamMomentsProcess(t *testing.T) {
 	service.StopStreaming()
 	
 	// Verify that moments were generated
-	assert.GreaterOrEqual(t, len(mockGenerator.GeneratedAllMoments), 1, "Should have generated moments")
+	assert.GreaterOrEqual(t, mockGenerator.GetGeneratedAllMomentsCount(), 1, "Should have generated moments")
 	
 	// Verify that moments were published
 	publishedMoments := mockClient.GetPublishedMoments()
@@ -237,7 +259,7 @@ func TestStreamMomentsWithPublishError(t *testing.T) {
 	service.StopStreaming()
 	
 	// Moments should be generated but not published
-	assert.GreaterOrEqual(t, len(mockGenerator.GeneratedAllMoments), 1, "Should have generated moments")
+	assert.GreaterOrEqual(t, mockGenerator.GetGeneratedAllMomentsCount(), 1, "Should have generated moments")
 	publishedMoments := mockClient.GetPublishedMoments()
 	assert.Empty(t, publishedMoments, "Should not have published moments due to error")
 }

@@ -43,7 +43,7 @@ func TestStreamMomentsProcess2(t *testing.T) {
 	// Test error conditions in streamMoments
 	// Create a mock generator that returns an error
 	mockGenerator := testutils.NewEnhancedMockMomentGenerator(repo)
-	mockGenerator.GenerateError = assert.AnError
+	mockGenerator.SetGenerateError(assert.AnError)
 	
 	// Create a new service with the mock generator
 	service = testutils.CreateMockStreamingService(repo, config, mockClient)
@@ -61,7 +61,7 @@ func TestStreamMomentsProcess2(t *testing.T) {
 	
 	// Now test publish error scenario
 	mockClient.SetPublishMomentError(assert.AnError)
-	mockGenerator.GenerateError = nil
+	mockGenerator.SetGenerateError(nil)
 	
 	// Start streaming again
 	err = service.StartStreaming()

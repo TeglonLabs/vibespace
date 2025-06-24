@@ -1,56 +1,227 @@
-name: Go Tests and Linting
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+  schedule:
+    # Run CI daily at 2 AM UTC to catch dependency issues
+    - cron: '0 2 * * *'
+
+env:
+  GO_VERSION: '1.24'
+  GOLANGCI_LINT_VERSION: 'v1.64.8'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  # Matrix build to test across multiple Go versions and OS
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.23', '1.24']
+        include:
+          # Add specific combinations for edge cases
+          - os: ubuntu-latest
+            go-version: '1.24'
+            primary: true
+    runs-on: ${{ matrix.os }}
+    
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: ${{ matrix.go-version }}
         check-latest: true
+        cache: true
 
-    - name: Install Just
-      uses: extractions/setup-just@v2
+    - name: Verify dependencies
+      run: |
+        go mod verify
+        go mod download
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run tests with race detection
+      run: |
+        go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        
+    - name: Check test coverage
+      if: matrix.primary
+      run: |
+        go tool cover -func=coverage.out
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+        echo "Total coverage: $COVERAGE%"
+        # Fail if coverage is below 80%
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below minimum 80%"
+          exit 1
+        fi
+
+    - name: Upload coverage to Codecov
+      if: matrix.primary
+      uses: codecov/codecov-action@v4
       with:
-        just-version: '1.14'
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
-    - name: Build
-      run: just build
+  # Linting job separated for better parallelization
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Run Tests
-      run: just test
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
 
-    - name: Check Code Coverage
-      run: go test ./rpcmethods/... ./streaming/... ./tests/... -coverprofile=coverage.out && go tool cover -func=coverage.out
-      
-    - name: Run Basic Linter
-      run: go vet ./rpcmethods/... ./streaming/...
-      continue-on-error: true
-      
-    - name: Run Advanced Linter
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: ${{ env.GOLANGCI_LINT_VERSION }}
+        args: --timeout=10m --config=.golangci.yml
+
+  # Security scanning
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
+
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: ./...
+
+    - name: Run govulncheck
       run: |
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-        golangci-lint run --timeout=5m ./rpcmethods/... ./streaming/...
-      continue-on-error: true
-        
-    - name: Generate Coverage Report
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+  # Build verification for multiple architectures
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          # Windows on ARM64 not needed for this project
+          - goos: windows
+            goarch: arm64
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
+
+    - name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
       run: |
-        go test ./rpcmethods/... ./streaming/... ./tests/... -coverprofile=coverage.out
-        
-    - name: Upload Coverage Report
+        mkdir -p dist
+        EXT=""
+        if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+        go build -ldflags="-s -w -X main.version=${GITHUB_SHA::8}" -o dist/vibespace-mcp-${{ matrix.goos }}-${{ matrix.goarch }}$EXT ./cmd/server
+
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
-        path: |
-          coverage.out
-          coverage.html
+        name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: dist/
+        retention-days: 7
+
+  # Comprehensive integration tests
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      nats:
+        image: nats:latest
+        ports:
+          - 4222:4222
+        options: >-
+          --health-cmd "nats-server --healthz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
+
+    - name: Wait for NATS
+      run: |
+        timeout 30s bash -c 'until curl -f http://localhost:4222/healthz; do sleep 1; done'
+
+    - name: Run integration tests
+      env:
+        NATS_URL: nats://localhost:4222
+      run: |
+        go test -tags=integration -v ./tests/... -timeout=5m
+
+  # Performance benchmarks
+  benchmark:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+        cache: true
+
+    - name: Run benchmarks
+      run: |
+        go test -bench=. -benchmem -count=3 ./... | tee benchmark.txt
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: benchmark.txt
         retention-days: 7

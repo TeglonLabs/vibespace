@@ -1,0 +1,87 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+CHANGELOG*
+LICENSE*
+
+# Build artifacts
+bin/
+dist/
+build/
+
+# Coverage and test reports
+coverage.out
+coverage*.html
+*.prof
+*.bench
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Dependencies
+vendor/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Local development
+.env*
+.local/
+*.local
+
+# Examples and scripts (unless needed)
+examples/
+scripts/
+*.sh
+justfile
+
+# Test cache
+.testcache/
+
+# Module cache
+$GOPATH/pkg/mod/
+
+# Generated files
+*_gen.go
+*_generated.go
+*.pb.go
+*.pb.gw.go
+
+# Air live reload
+.air.toml
+
+# Backup files
+*.bak
+*.backup
+
+# Config files
+config.local.*

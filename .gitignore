@@ -1,0 +1,122 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build artifacts
+/bin/
+/dist/
+/build/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Coverage reports
+coverage.out
+coverage.html
+coverage-*.html
+coverage-*.xml
+*.cover
+*.prof
+
+# Log files
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.test
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# MCP specific
+mcp-client-config.json
+mcp-server-config.json
+
+# NATS streaming specific
+*.jetstream/
+nats-server.pid
+
+# Benchmark results
+*.bench
+
+# Performance profiles
+cpu.prof
+mem.prof
+block.prof
+mutex.prof
+
+# Test cache
+.testcache/
+
+# Module download cache
+$GOPATH/pkg/mod/
+
+# Documentation build artifacts
+docs/_build/
+docs/.doctrees/
+
+# Local development
+.local/
+*.local
+
+# Backup files
+*.bak
+*.backup
+
+# Generated files
+*_gen.go
+*_generated.go
+*.pb.go
+*.pb.gw.go
+
+# Mock files (if using gomock)
+*_mock.go
+
+# Air live reload
+.air.toml
+tmp/
+
+# GoReleaser
+dist/
+goreleaser.yml.backup
+
+# Config files that shouldn't be committed
+config.local.yaml
+config.local.yml
+config.local.json

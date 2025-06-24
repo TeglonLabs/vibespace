@@ -11,7 +11,7 @@ import (
 
 // TestCompositionalVibe tests creating compositional vibes and worlds
 func TestCompositionalVibe(t *testing.T) {
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Create base vibes with different compositional elements

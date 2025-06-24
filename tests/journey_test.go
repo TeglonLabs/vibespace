@@ -13,7 +13,7 @@ import (
 func TestJourney1(t *testing.T) {
 	// JSON-RPC compatibility issue resolved with custom implementation
 	
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Read list of all vibes
@@ -106,7 +106,7 @@ func TestJourney1(t *testing.T) {
 func TestJourney2(t *testing.T) {
 	// JSON-RPC compatibility issue resolved with custom implementation
 	
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Create a new vibe
@@ -203,7 +203,7 @@ func TestJourney2(t *testing.T) {
 func TestJourney3(t *testing.T) {
 	// JSON-RPC compatibility issue resolved with custom implementation
 	
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Create a new world
@@ -330,7 +330,7 @@ func TestJourney3(t *testing.T) {
 func TestJourney4(t *testing.T) {
 	// JSON-RPC compatibility issue resolved with custom implementation
 	
-	s, _ := setupTestServer()
+	s, _ := setupBasicTestServer()
 	ctx := context.Background()
 
 	// Step 1: Try to get a non-existent vibe

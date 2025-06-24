@@ -1,38 +1,68 @@
-name: Go Tests
+name: Quick Tests
 
+# Lightweight test workflow for quick feedback
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+
+env:
+  GO_VERSION: '1.24'
 
 jobs:
-  test:
-    name: Run Tests
+  quick-test:
+    name: Quick Test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: ${{ env.GO_VERSION }}
         cache: true
 
-    - name: Install dependencies
-      run: go mod download
-
-    - name: Run Tests
-      run: go test -v ./tests
-
-    - name: Generate Coverage Report
+    - name: Download dependencies
       run: |
-        go test -coverprofile=coverage.out ./tests
-        go tool cover -html=coverage.out -o coverage.html
+        go mod download
+        go mod verify
 
-    - name: Upload Coverage Report
-      uses: actions/upload-artifact@v4
+    - name: Run fast tests
+      run: |
+        go test -short -race ./...
+
+    - name: Check build
+      run: |
+        go build -v ./...
+
+  # Quick format and basic lint check
+  quick-lint:
+    name: Quick Lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
       with:
-        name: coverage-report
-        path: coverage.html
-        retention-days: 7
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Check formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "Code is not formatted properly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Check for common issues
+      run: |
+        go install honnef.co/go/tools/cmd/staticcheck@latest
+        staticcheck ./...

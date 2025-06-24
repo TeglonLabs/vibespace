@@ -26,7 +26,8 @@ type StreamingService struct {
 	repo            RepositoryInterface
 	streamingActive bool
 	stopChan        chan struct{}
-	mu              sync.Mutex
+	mu              sync.RWMutex // Use RWMutex for better read concurrency
+	once            sync.Once    // Ensure single initialization
 }
 
 // NewStreamingService creates a new streaming service
@@ -143,24 +144,39 @@ func (s *StreamingService) stopStreaming() {
 	}
 
 	// Signal the streaming goroutine to stop
-	close(s.stopChan)
+	// Use select to avoid panic if channel is already closed
+	select {
+	case <-s.stopChan:
+		// Already closed
+	default:
+		close(s.stopChan)
+	}
 	s.streamingActive = false
 }
 
 // streamMoments is the main streaming loop that publishes world moments at regular intervals
 func (s *StreamingService) streamMoments() {
-	ticker := time.NewTicker(s.config.StreamInterval)
+	// Get snapshot of configuration and stop channel to avoid races
+	s.mu.RLock()
+	interval := s.config.StreamInterval
+	stopChan := s.stopChan
+	momGen := s.momentGenerator
+	client := s.natsClient
+	s.mu.RUnlock()
+
+	if momGen == nil {
+		fmt.Printf("Error: momentGenerator is nil in streamMoments\n")
+		return
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			// Generate and publish moments for all worlds
-			if s.momentGenerator == nil {
-				fmt.Printf("Error: momentGenerator is nil in streamMoments\n")
-				continue
-			}
-			moments, err := s.momentGenerator.GenerateAllMoments()
+			moments, err := momGen.GenerateAllMoments()
 			if err != nil {
 				fmt.Printf("Error generating moments: %v\n", err)
 				continue
@@ -185,12 +201,12 @@ func (s *StreamingService) streamMoments() {
 					}
 				}
 				
-				if err := s.natsClient.PublishWorldMoment(moment, creatorID); err != nil {
+				if err := client.PublishWorldMoment(moment, creatorID); err != nil {
 					fmt.Printf("Error publishing moment for world %s: %v\n", moment.WorldID, err)
 				}
 			}
 
-		case <-s.stopChan:
+		case <-stopChan:
 			// Streaming has been stopped
 			return
 		}
@@ -252,8 +268,8 @@ func (s *StreamingService) StreamSingleWorld(worldID string, userID string) erro
 
 // IsStreaming returns whether the service is currently streaming
 func (s *StreamingService) IsStreaming() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.streamingActive
 }
 

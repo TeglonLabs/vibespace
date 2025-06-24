@@ -280,7 +280,10 @@ type UpdateConfigResponse struct {
 func (t *StreamingTools) UpdateConfig(req *UpdateConfigRequest) (*UpdateConfigResponse, error) {
 	// Track if we need to create a new client
 	needNewClient := false
-	wasStreaming := t.service.IsStreaming()
+	
+	// Acquire write lock to prevent races with streamMoments
+	t.service.mu.Lock()
+	wasStreaming := t.service.streamingActive
 	
 	// Update NATS URL if provided directly
 	if req.NATSUrl != "" {
@@ -315,9 +318,9 @@ func (t *StreamingTools) UpdateConfig(req *UpdateConfigRequest) (*UpdateConfigRe
 	
 	// If we need to create a new client due to URL or stream ID changes
 	if needNewClient || streamIDChanged {
-		// Stop streaming if active
+		// Stop streaming if active (must be called without holding the lock)
 		if wasStreaming {
-			t.service.StopStreaming()
+			t.service.stopStreaming()
 		}
 		
 		// Close the old connection
@@ -338,7 +341,8 @@ func (t *StreamingTools) UpdateConfig(req *UpdateConfigRequest) (*UpdateConfigRe
 		}
 		
 		if wasStreaming {
-			if err := t.service.StartStreaming(); err != nil {
+			if err := t.service.startStreaming(); err != nil {
+				t.service.mu.Unlock()
 				return &UpdateConfigResponse{
 					Success: false,
 					Message: fmt.Sprintf("Failed to restart streaming: %v", err),
@@ -351,6 +355,9 @@ func (t *StreamingTools) UpdateConfig(req *UpdateConfigRequest) (*UpdateConfigRe
 	if req.StreamInterval > 0 {
 		t.service.config.StreamInterval = time.Duration(req.StreamInterval) * time.Millisecond
 	}
+	
+	// Release the lock before returning
+	t.service.mu.Unlock()
 
 	return &UpdateConfigResponse{
 		Success: true,
