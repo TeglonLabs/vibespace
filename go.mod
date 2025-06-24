@@ -1,6 +1,8 @@
 module github.com/bmorphism/vibespace-mcp-go
 
-go 1.23.5
+go 1.24
+
+toolchain go1.24.0
 
 require (
 	github.com/axw/gocov v1.2.1

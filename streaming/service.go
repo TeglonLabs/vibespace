@@ -264,12 +264,13 @@ func (s *StreamingService) PublishVibeUpdate(worldID string, vibe *models.Vibe) 
 
 	// Check if we're connected to NATS first
 	if !s.natsClient.IsConnected() {
-		// Try to connect, but if it fails, return the error immediately
-		if err := s.natsClient.Connect(); err != nil {
-			return fmt.Errorf("failed to connect to NATS: %w", err)
-		}
+		return fmt.Errorf("not connected to NATS")
 	}
 
 	// Publish the vibe update
-	return s.natsClient.PublishVibeUpdate(worldID, vibe)
+	if err := s.natsClient.PublishVibeUpdate(worldID, vibe); err != nil {
+		return fmt.Errorf("failed to publish vibe update: %w", err)
+	}
+	
+	return nil
 }
