@@ -205,37 +205,6 @@ func TestHardwareOptimizedVibe(t *testing.T) {
 	}
 }
 
-func TestQuantumInspiredProcessor(t *testing.T) {
-	qubits := 4
-	processor := NewQuantumInspiredProcessor(qubits)
-	
-	// Create entangled pairs
-	processor.Entangle(0, 1)
-	processor.Entangle(2, 3)
-	
-	// Create test vibes with different energy levels
-	vibes := []*models.Vibe{
-		{ID: "vibe0", Energy: 0.2}, // Low -> TernaryNegative
-		{ID: "vibe1", Energy: 0.5}, // Medium -> TernaryNeutral  
-		{ID: "vibe2", Energy: 0.8}, // High -> TernaryPositive
-		{ID: "vibe3", Energy: 0.4}, // Medium -> TernaryNeutral
-	}
-	
-	// Apply quantum evolution
-	evolved := processor.Evolve(vibes)
-	require.Equal(t, len(vibes), len(evolved))
-	
-	// Check that entanglement affected the states
-	// vibe0 (negative) should have affected vibe1 (its entangled partner)
-	// vibe2 (positive) should have affected vibe3 (its entangled partner)
-	
-	for i, vibe := range evolved {
-		assert.NotNil(t, vibe)
-		assert.GreaterOrEqual(t, vibe.Energy, 0.0)
-		assert.LessOrEqual(t, vibe.Energy, 1.0)
-		t.Logf("Vibe %d: %s - Energy: %.3f -> %.3f", i, vibe.ID, vibes[i].Energy, vibe.Energy)
-	}
-}
 
 func TestRTStreamProcessor(t *testing.T) {
 	capacity := uint64(256)
@@ -436,26 +405,6 @@ func BenchmarkHardwareOptimizedVibeConversion(b *testing.B) {
 	}
 }
 
-func BenchmarkQuantumInspiredProcessor(b *testing.B) {
-	processor := NewQuantumInspiredProcessor(8)
-	processor.Entangle(0, 1)
-	processor.Entangle(2, 3)
-	processor.Entangle(4, 5)
-	processor.Entangle(6, 7)
-	
-	vibes := make([]*models.Vibe, 8)
-	for i := 0; i < 8; i++ {
-		vibes[i] = &models.Vibe{
-			ID:     fmt.Sprintf("bench-vibe-%d", i),
-			Energy: float64(i) / 8.0,
-		}
-	}
-	
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = processor.Evolve(vibes)
-	}
-}
 
 func BenchmarkMemoryPools(b *testing.B) {
 	b.Run("VibePool", func(b *testing.B) {

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// TestNATSClientHelpers tests the helper methods for NATSClient
-func TestNATSClientHelpers(t *testing.T) {
+// TestNATSClientUtilities tests the utility methods for NATSClient
+func TestNATSClientUtilities(t *testing.T) {
 	// Create a client for testing
 	client := NewNATSClient("nats://test:4222")
 	
