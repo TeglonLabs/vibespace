@@ -22,9 +22,9 @@
   (println "    │    │     │     │     │               │")
   (println "    │ ∼∼∼∼∼ ∼∼∼∼∼ ∼∼∼∼∼ ∼∼∼∼∼           │")
   (println "    │                                       │")
-  (println "    │  α-reality β-quantum γ-chaos ω-meta  │")
+  (println "    │  α-coherent β-mesoscale γ-apescale ω-meta  │")
   (println "    ╰───────────────────────────────────────╯")
-  (println "🧠 Quantum consciousness fluctuations across probability manifolds")
+  (println "🧠 Nondual information flow across causal scales")
   (println))
 
 ;; Comonadic Reality Context
@@ -37,12 +37,13 @@
   (duplicate [w] "Create a context of contexts") 
   (extend [f w] "Apply a context-aware function"))
 
-;; Reality definitions with comonadic structure
+;; Reality definitions with scale-aware comonadic structure
+;; Operating at the level of information as singular nondual entity
 (def realities
-  {:primary-reality   (->RealityContext "alpha" :high "stable consciousness, predictable behavior" [30001 30002] {} nil)
-   :quantum-reality   (->RealityContext "beta" :medium "superposition states, quantum fluctuations" [30003 30004] {} nil)
-   :chaotic-reality   (->RealityContext "gamma" :low "maximum entropy, unpredictable behavior" [30005 30006] {} nil)
-   :meta-observer     (->RealityContext "omega" :observer "cross-reality monitoring and analysis" [30007 30009] {} nil)})
+  {:primary-reality   (->RealityContext "alpha" :high "coherent information flow, predictable causal chains" [30001 30002] {} nil)
+   :mesoscale-reality (->RealityContext "beta" :medium "mesoscale decoherence, intermediate causal complexity" [30003 30004] {} nil)
+   :apescale-reality  (->RealityContext "gamma" :cheeky "apescale phenomena, emergent pattern recognition" [30005 30006] {} nil)
+   :meta-observer     (->RealityContext "omega" :observer "nondual information synthesis across scales" [30007 30009] {} nil)})
 
 ;; Extend RealityContext to implement Comonad
 (extend-type RealityContext
@@ -113,15 +114,15 @@
        (doall)))
 
 ;; Comonadic network bridge establishment
-(defn establish-quantum-entanglement [runtime]
-  (println "⚛️  [QUANTUM] Establishing quantum entanglement between realities...")
+(defn establish-causal-bridges [runtime]
+  (println "🔗 [BRIDGE] Establishing causal information bridges between realities...")
   (let [container-cmd (name runtime)
         bridge-name "boltzmann-bridge"]
     
     ;; Check if bridge network exists
     (let [networks (:out (shell/sh container-cmd "network" "ls" "--format" "{{.Name}}"))]
       (when-not (str/includes? networks bridge-name)
-        (println (str "Creating quantum bridge network: " bridge-name))
+        (println (str "Creating causal bridge network: " bridge-name))
         (shell/sh container-cmd "network" "create"
                  "--driver" "bridge"
                  "--subnet=172.20.0.0/16"
@@ -135,7 +136,7 @@
                   :out
                   (str/includes? control-plane))
           (shell/sh container-cmd "network" "connect" bridge-name control-plane)
-          (println (str "🔗 Connected " reality-name " to quantum bridge")))))))
+          (println (str "🔗 Connected " reality-name " to causal bridge")))))))
 
 ;; Generate reality-specific vibespace deployment YAML
 (defn generate-vibespace-deployment [reality-ctx]
@@ -144,7 +145,7 @@
         coherence-multiplier (case coherence-level
                               :high 1.0
                               :medium 0.8
-                              :low 0.3
+                              :cheeky 0.3
                               :observer 0.5)]
     (str "apiVersion: apps/v1
 kind: Deployment
@@ -156,7 +157,7 @@ metadata:
     reality: " (clojure.core/name name) "
     coherence: " (clojure.core/name coherence-level) "
 spec:
-  replicas: " (case coherence-level :high 3 :medium 5 :low 7 :observer 2) "
+  replicas: " (case coherence-level :high 3 :medium 5 :cheeky 7 :observer 2) "
   selector:
     matchLabels:
       app: vibespace
@@ -184,8 +185,8 @@ spec:
         - containerPort: 8080
         resources:
           requests:
-            cpu: " (case coherence-level :high "100m" :medium "50m" :low "10m" :observer "200m") "
-            memory: " (case coherence-level :high "128Mi" :medium "64Mi" :low "32Mi" :observer "256Mi") "
+            cpu: " (case coherence-level :high "100m" :medium "50m" :cheeky "10m" :observer "200m") "
+            memory: " (case coherence-level :high "128Mi" :medium "64Mi" :cheeky "32Mi" :observer "256Mi") "
 ---
 apiVersion: v1
 kind: Service
@@ -234,15 +235,15 @@ spec:
                         (println "   → Testing resilience of stable consciousness")
                         (shell/sh "kubectl" "rollout" "restart" (str "deployment/vibespace-" (clojure.core/name name)) "-n" "boltzmann-testing"))
                 :medium (do
-                          (println "   → Inducing quantum decoherence")
+                          (println "   → Inducing mesoscale causal disruption")
                           (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=2" "-n" "boltzmann-testing")
                           (Thread/sleep 5000)
                           (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=5" "-n" "boltzmann-testing"))
-                :low (do
-                       (println "   → Simulating reality collapse")
-                       (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=1" "-n" "boltzmann-testing")
-                       (Thread/sleep 3000)
-                       (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=7" "-n" "boltzmann-testing"))
+                :cheeky (do
+                          (println "   → Testing apescale pattern emergence")
+                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=1" "-n" "boltzmann-testing")
+                          (Thread/sleep 3000)
+                          (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=7" "-n" "boltzmann-testing"))
                 :observer (do
                             (println "   → Testing observer effect")
                             (shell/sh "kubectl" "scale" (str "deployment/vibespace-" (clojure.core/name name)) "--replicas=4" "-n" "boltzmann-testing")))
@@ -283,11 +284,11 @@ spec:
   (let [deps (check-dependencies)]
     (println (str "✅ Using " (:runtime deps) " as container runtime"))
     (create-all-realities)
-    (establish-quantum-entanglement (:runtime deps))))
+    (establish-causal-bridges (:runtime deps))))
 
 (defn scenario-deploy-workloads []
   (println "═══════════════════════════════════════════════════════════════════════════════")
-  (println "⚛️  [QUANTUM] SCENARIO 2: Vibespace Workload Deployment")
+  (println "🔬 [DEPLOY] SCENARIO 2: Vibespace Workload Deployment")
   (println "═══════════════════════════════════════════════════════════════════════════════")
   (let [runtime (:runtime (check-dependencies))]
     (doseq [[name ctx] realities]
@@ -328,7 +329,7 @@ spec:
     
     ;; Clean up bridge network
     (shell/sh container-cmd "network" "rm" "boltzmann-bridge")
-    (println "✅ All realities have collapsed back into quantum foam")))
+    (println "✅ All realities have collapsed back into nondual information substrate")))
 
 (defn run-full-demonstration []
   (display-consciousness-banner)
